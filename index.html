@@ -1,0 +1,1036 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>박스히어로 실시간 재고 대시보드</title>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#fff; --line:#e3e6ec; --text:#1c2030; --muted:#6b7280;
+  --accent:#4f67ff; --accent-soft:rgba(79,103,255,.09);
+  --in:#0f9d58; --out:#e2483d; --move:#f0a020; --adjust:#7c5cff;
+  --warn:#b45309; --warn-bg:#fef3c7;
+  --radius:10px; --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#12141a; --panel:#1a1d25; --line:#2b3040; --text:#e8eaf0; --muted:#9aa1b1;
+        --accent:#8f9eff; --accent-soft:rgba(143,158,255,.14); --warn-bg:#3a2c08; --warn:#fbbf24;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  font-size:13px;line-height:1.5}
+h1,h2,h3{margin:0;font-weight:700}
+button,select,input{font:inherit;color:inherit}
+.wrap{max-width:1680px;margin:0 auto;padding:14px 18px 60px}
+
+/* ---- top bar ---- */
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.top h1{font-size:17px;letter-spacing:-.3px}
+.titlebox{display:flex;flex-direction:column;gap:1px}
+.subtitle{font-size:10.5px;color:var(--muted);font-weight:400;letter-spacing:-.1px}
+.badge{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+.spacer{flex:1}
+.btn{padding:6px 12px;border:1px solid var(--line);background:var(--panel);border-radius:8px;cursor:pointer;
+  font-weight:600;font-size:12px;box-shadow:var(--shadow)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{opacity:.9;color:#fff}
+.btn:disabled{opacity:.45;cursor:default}
+.chk{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;
+  user-select:none;white-space:nowrap;flex:0 0 auto}
+.chk input{flex:0 0 auto;margin:0}
+
+/* ---- panels ---- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.pad{padding:14px 16px}
+.note{background:var(--warn-bg);color:var(--warn);border:1px solid transparent;border-radius:var(--radius);
+  padding:10px 14px;font-size:12px;margin-bottom:12px}
+.err{background:#fee2e2;color:#991b1b;border-radius:var(--radius);padding:10px 14px;font-size:12px;margin-bottom:12px;
+  white-space:pre-wrap;word-break:break-all}
+@media (prefers-color-scheme:dark){.err{background:#3c1414;color:#fca5a5}}
+
+/* ---- setup ---- */
+#setup{margin-bottom:14px}
+#setup input{width:100%;max-width:520px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.hint{color:var(--muted);font-size:11.5px;margin-top:6px}
+.hint a{color:var(--accent)}
+
+/* ---- kpi ---- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow)}
+.kpi .k{font-size:11.5px;color:var(--muted);font-weight:600}
+.kpi .v{font-size:21px;font-weight:800;letter-spacing:-.6px;margin-top:3px;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:11px;color:var(--muted);margin-top:2px}
+.kpi.bad .v{color:var(--out)} .kpi.warn .v{color:var(--move)}
+
+/* ---- tabs ---- */
+.tabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+.tab{padding:8px 14px;border:none;background:none;cursor:pointer;font-weight:700;font-size:13px;color:var(--muted);
+  border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ---- filters ---- */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
+.f{display:flex;flex-direction:column;gap:3px}
+.f label{font-size:11px;color:var(--muted);font-weight:600}
+.f select,.f input{padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--panel);min-width:120px}
+.f input[type=date]{min-width:132px}
+.f.grow{flex:1;min-width:180px}
+.f.grow input{width:100%}
+
+/* ---- table ---- */
+.tablebox{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;
+  max-height:calc(100vh - 330px);box-shadow:var(--shadow)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px}
+th,td{padding:7px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--panel);z-index:2;font-weight:700;font-size:11.5px;color:var(--muted);
+  cursor:pointer;box-shadow:inset 0 -1px 0 var(--line)}
+th.n,td.n{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr:hover{background:var(--accent-soft)}
+td.name{white-space:normal;min-width:200px;font-weight:600}
+.zero{color:var(--out);font-weight:700}
+.low{color:var(--move);font-weight:700}
+.pill{display:inline-block;padding:1px 7px;border-radius:99px;font-size:10.5px;font-weight:700;color:#fff}
+.pill.in{background:var(--in)} .pill.out{background:var(--out)}
+.pill.move{background:var(--move)} .pill.adjust{background:var(--adjust)}
+.thumb{width:26px;height:26px;border-radius:5px;object-fit:cover;background:var(--bg);display:block}
+.empty{padding:38px;text-align:center;color:var(--muted)}
+a.txlink{color:var(--accent);text-decoration:none}
+
+/* ---- progress ---- */
+#bar{position:fixed;left:0;top:0;height:3px;background:var(--accent);width:0;transition:width .2s;z-index:99}
+#status{font-size:11.5px;color:var(--muted)}
+.hidden{display:none!important}
+.rowcount{font-size:11.5px;color:var(--muted);margin:8px 2px}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div class="wrap">
+
+  <div class="top">
+    <div class="titlebox">
+      <h1>박스히어로 실시간 재고 대시보드</h1>
+      <div class="subtitle">KOLAS 품질절차서 FITI-P-006 외부에서 제공되는 서비스</div>
+    </div>
+    <span class="badge" id="teamBadge">미연결</span>
+    <span id="status"></span>
+    <span class="spacer"></span>
+    <label class="chk"><input type="checkbox" id="autoRefresh"> 자동 새로고침 60초</label>
+    <button class="btn" id="btnSetup">토큰 설정</button>
+    <button class="btn primary" id="btnReload">새로고침</button>
+  </div>
+
+  <div id="errBox" class="err hidden"></div>
+  <div id="modeNote" class="note hidden"></div>
+
+  <div id="setup" class="card pad">
+    <h3 style="font-size:13px;margin-bottom:8px">BoxHero API 토큰</h3>
+    <input type="password" id="token" placeholder="박스히어로 앱 → 설정 → 연동(Integrations) 에서 발급한 토큰 붙여넣기" autocomplete="off">
+    <div style="margin-top:9px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn primary" id="btnConnect">연결</button>
+      <label class="chk"><input type="checkbox" id="remember" checked> 이 브라우저에 저장</label>
+      <span class="hint" style="margin:0;flex:1 1 260px;min-width:0">토큰은 이 브라우저(localStorage)에만 저장되며 외부로 전송되지 않습니다.</span>
+    </div>
+    <div class="hint">
+      ⚠️ 토큰에는 <b>쓰기 권한</b>이 포함됩니다. 이 HTML 파일에 토큰을 넣어 팀원에게 그대로 배포하지 마세요.
+      팀원 열람용은 <code>api/boxhero/[...path].js</code> 프록시로 배포하세요(README 참고).
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="stock">재고 현황</button>
+    <button class="tab" data-tab="tx">입출고 내역</button>
+    <button class="tab" data-tab="loc">창고별 집계</button>
+  </div>
+
+  <!-- ================= 재고 현황 ================= -->
+  <section id="tab-stock">
+    <div class="filters">
+      <div class="f grow"><label>검색 (품목명 / SKU / 바코드)</label><input id="q" placeholder="검색어 입력"></div>
+      <div class="f"><label>창고</label><select id="fLoc"><option value="">전체 창고</option></select></div>
+      <div class="f"><label>재고 상태</label><select id="fStock">
+        <option value="">전체</option><option value="has">재고 있음</option>
+        <option value="zero">재고없음 (0)</option><option value="low">재고부족 (기준 이하)</option>
+      </select></div>
+      <div class="f"><label>재고부족 기준</label><input id="fThreshold" type="number" value="0" min="0" style="min-width:90px"></div>
+      <div id="attrFilters" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"></div>
+      <span class="spacer"></span>
+      <div class="f"><label>&nbsp;</label><button class="btn" id="btnXlsxStock">Excel 내려받기</button></div>
+      <div class="f"><label>&nbsp;</label><button class="btn" id="btnCsvStock">CSV</button></div>
+    </div>
+    <div class="rowcount" id="stockCount"></div>
+    <div class="tablebox"><table id="tblStock"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- ================= 입출고 내역 ================= -->
+  <section id="tab-tx" class="hidden">
+    <div class="filters">
+      <div class="f"><label>기간</label><select id="txRange">
+        <option value="7">최근 7일</option><option value="30" selected>최근 30일</option>
+        <option value="90">최근 90일</option><option value="365">최근 1년</option>
+        <option value="custom">직접 지정</option>
+      </select></div>
+      <div class="f"><label>시작일</label><input type="date" id="txFrom"></div>
+      <div class="f"><label>종료일</label><input type="date" id="txTo"></div>
+      <div class="f"><label>유형</label><select id="txType">
+        <option value="">전체</option><option value="in">입고</option><option value="out">출고</option>
+        <option value="move">이동</option><option value="adjust">조정</option>
+      </select></div>
+      <div class="f"><label>창고</label><select id="txLoc"><option value="">전체 창고</option></select></div>
+      <div class="f grow"><label>검색 (품목 / 거래처 / 담당자 / 메모)</label><input id="txQ" placeholder="검색어 입력"></div>
+      <div class="f"><label>&nbsp;</label><label class="chk" style="padding:6px 0"><input type="checkbox" id="txDetail" checked> 품목 단위로 펼치기</label></div>
+      <div class="f"><label>&nbsp;</label><button class="btn primary" id="btnLoadTx">불러오기</button></div>
+      <div class="f"><label>&nbsp;</label><button class="btn" id="btnXlsxTx">Excel 내려받기</button></div>
+      <div class="f"><label>&nbsp;</label><button class="btn" id="btnCsvTx">CSV</button></div>
+    </div>
+    <div class="rowcount" id="txCount">기간을 고르고 <b>불러오기</b>를 누르세요.</div>
+    <div class="tablebox"><table id="tblTx"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- ================= 창고별 집계 ================= -->
+  <section id="tab-loc" class="hidden">
+    <div class="filters">
+      <span class="spacer"></span>
+      <div class="f"><label>&nbsp;</label><button class="btn" id="btnXlsxLoc">Excel 내려받기</button></div>
+    </div>
+    <div class="rowcount" id="locCount"></div>
+    <div class="tablebox"><table id="tblLoc"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   박스히어로 Open API 대시보드 (의존성 없음 / 단일 HTML)
+   spec: https://rest.boxhero-app.com/docs/api   (OpenAPI: /docs/spec)
+   ========================================================================= */
+
+/** 표와 필터에서 감출 항목 속성 이름. 여기에 넣으면 화면·엑셀 모두에서 빠진다. */
+const HIDE_ATTRS = ["비고"];
+
+const DIRECT_BASE = "https://rest.boxhero-app.com";
+const PROXY_BASE  = "api/boxhero";          // Vercel 서버리스 프록시 (팀원 열람용, ?path=... 형식)
+const LS_TOKEN    = "boxhero.token";
+const LS_CACHE    = "boxhero.cache";        // 마지막 조회 결과 스냅샷 (즉시 표시용)
+
+/** 열람 코드(VIEW_CODE)를 쓰는 배포에서는 주소의 ?code=... 를 프록시 요청에 그대로 전달한다 */
+const VIEW_CODE = new URLSearchParams(location.search).get("code") || "";
+
+const S = {
+  mode: "direct",        // "direct" | "proxy"
+  token: "",
+  team: null,
+  members: [],
+  locations: [],         // {id,name,quantity,memo}
+  locName: new Map(),
+  attrSpecs: [],         // {id,attr_type,attr_name,rank}
+  items: [],             // /v1/items 전체
+  txRows: [],            // 표시용 입출고 행
+  sort: {stock:{k:"name",dir:1}, tx:{k:"time",dir:-1}, loc:{k:"name",dir:1}},
+  attrFilter: {},        // attrName -> value
+  tab: "stock",
+  timer: null,
+};
+
+/* ---------------- 유틸 ---------------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nf = n => (Number(n) || 0).toLocaleString("ko-KR", {maximumFractionDigits:3});
+const setBar = p => { const b=$("#bar"); b.style.width = p<=0||p>=100 ? "0" : p+"%"; };
+const setStatus = t => { $("#status").textContent = t || ""; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function showErr(msg){ const e=$("#errBox"); e.textContent = msg; e.classList.remove("hidden"); }
+function clearErr(){ $("#errBox").classList.add("hidden"); }
+
+function ymd(d){ const p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
+function fmtDT(iso){
+  if(!iso) return "";
+  const d = new Date(iso), p = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+const TYPE_KO = {in:"입고", out:"출고", move:"이동", adjust:"조정"};
+
+/* ---------------- API ---------------- */
+async function api(path, params){
+  const qs = new URLSearchParams();
+  for (const [k,v] of Object.entries(params || {})) {
+    if (v === undefined || v === null || v === "") continue;
+    Array.isArray(v) ? v.forEach(x => qs.append(k, x)) : qs.append(k, v);
+  }
+  let url;
+  if (S.mode === "proxy") {
+    qs.set("path", path);                       // 대상 경로는 쿼리로 전달
+    if (VIEW_CODE) qs.set("code", VIEW_CODE);
+    url = `${PROXY_BASE}?${qs}`;
+  } else {
+    const q = qs.toString();
+    url = `${DIRECT_BASE}/${path}` + (q ? "?" + q : "");
+  }
+  const headers = S.mode === "proxy" ? {} : {Authorization: "Bearer " + S.token};
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    let res;
+    try { res = await fetch(url, {headers}); }
+    catch (e) { throw new Error("네트워크 오류: " + e.message + "\n(사내망 차단 또는 오프라인 여부를 확인하세요)"); }
+
+    if (res.status === 429) {                       // 팀 단위 rate limit → 백오프
+      const wait = Number(res.headers.get("Retry-After")) || (2 ** attempt);
+      setStatus(`요청 제한(429) — ${wait}초 대기 후 재시도`);
+      await sleep(wait * 1000);
+      continue;
+    }
+    if (!res.ok) {
+      let body = null; try { body = await res.json(); } catch {}
+      const title = body?.title || res.statusText;
+      const type  = body?.type ? ` [${body.type}]` : "";
+      throw new Error(`API ${res.status}${type}\n${title}\n요청: ${path}`);
+    }
+    return res.json();
+  }
+  throw new Error("요청 제한(429)이 계속되어 중단했습니다. 잠시 후 다시 시도하세요.");
+}
+
+/** 커서 페이지네이션 전체 순회 */
+async function apiAll(path, params, opt){
+  const {onPage, stop, maxPages = 400} = opt || {};
+  const out = [];
+  let cursor, pages = 0;
+  while (pages < maxPages) {
+    const r = await api(path, Object.assign({limit:100}, params, cursor ? {cursor} : {}));
+    const batch = r.items || [];
+    out.push(...batch);
+    pages++;
+    if (onPage) onPage(out.length, pages);
+    if (stop && stop(batch)) return {list: out, truncated: false};
+    if (!r.has_more || r.cursor == null) return {list: out, truncated: false};
+    cursor = r.cursor;
+  }
+  return {list: out, truncated: true};
+}
+
+/** 프록시 배포 여부 자동 감지 */
+async function detectProxy(){
+  if (location.protocol === "file:") return false;
+  try {
+    const res = await fetch(`${PROXY_BASE}?path=v1/teams/linked` + (VIEW_CODE ? `&code=${encodeURIComponent(VIEW_CODE)}` : ""));
+    if (!res.ok) return false;
+    const j = await res.json();
+    return !!(j && j.id);
+  } catch { return false; }
+}
+
+/* ---------------- 로드 ---------------- */
+async function connect(){
+  clearErr();
+  try {
+    S.team = await api("v1/teams/linked");
+  } catch (e) {
+    showErr(e.message);
+    $("#teamBadge").textContent = "연결 실패";
+    return false;
+  }
+  $("#teamBadge").textContent = S.team.name;
+  $("#setup").classList.add("hidden");
+
+  const note = $("#modeNote");
+  if (S.team.mode !== 2) {
+    note.innerHTML = `이 팀의 모드가 <b>LOCATION(창고) 모드가 아닙니다</b> (mode=${S.team.mode}).
+      박스히어로 Open API는 LOCATION 모드에서만 대부분의 엔드포인트가 동작합니다. 박스히어로 앱에서 팀 모드를 확인하세요.`;
+    note.classList.remove("hidden");
+  } else note.classList.add("hidden");
+
+  await loadAll();
+  return true;
+}
+
+/** 조회 결과를 화면 상태에 반영하고 다시 그린다 */
+function setData({team, locations, itemAttrs, members, items}){
+  if (team) S.team = team;
+  // API는 생성 id 순으로 주므로 창고명 오름차순으로 정렬한다 (드롭다운·컬럼 순서 모두 여기서 결정)
+  S.locations = (locations || []).slice().sort((a,b) => a.name.localeCompare(b.name, "ko", {numeric:true}));
+  S.locName = new Map(S.locations.map(l => [l.id, l.name]));
+  S.attrSpecs = (itemAttrs || [])
+    .filter(a => !HIDE_ATTRS.includes(a.attr_name))
+    .sort((a,b) => (a.rank - b.rank) || (a.id - b.id));
+  S.members = members || [];
+  S.items = items || [];
+
+  fillLocationSelects();
+  buildAttrFilters();
+  renderKPI();
+  renderStock();
+  renderLoc();
+}
+
+/* ---- 브라우저 스냅샷 캐시 : 재방문 시 19초를 기다리지 않고 바로 표시한다 ---- */
+function saveCache(){
+  try {
+    localStorage.setItem(LS_CACHE, JSON.stringify({
+      at: Date.now(), team: S.team, locations: S.locations,
+      itemAttrs: S.attrSpecs, members: S.members, items: S.items,
+    }));
+  } catch (e) { /* 용량 초과 시 캐시는 포기하고 진행 */ }
+}
+function readCache(){
+  try {
+    const c = JSON.parse(localStorage.getItem(LS_CACHE) || "null");
+    return c && c.items && c.items.length ? c : null;
+  } catch { return null; }
+}
+
+/** 서버 집계 스냅샷 (프록시 배포 환경) — 36번 순차 호출을 서버가 대신하고 CDN이 캐시한다 */
+async function fetchSnapshot(){
+  const url = "api/snapshot" + (VIEW_CODE ? `?code=${encodeURIComponent(VIEW_CODE)}` : "");
+  const res = await fetch(url);
+  if (!res.ok) {
+    let b = null; try { b = await res.json(); } catch {}
+    throw new Error(`스냅샷 ${res.status}\n${b?.title || res.statusText}`);
+  }
+  return res.json();
+}
+
+async function loadAll(){
+  clearErr();
+  $("#btnReload").disabled = true;
+  try {
+    if (S.mode === "proxy") {
+      setStatus("서버 집계 스냅샷 불러오는 중…"); setBar(30);
+      const snap = await fetchSnapshot();
+      setData({team: snap.team, locations: snap.locations, itemAttrs: snap.item_attrs,
+               members: snap.members, items: snap.items});
+      const age = Math.round((Date.now() - new Date(snap.generated_at)) / 1000);
+      setStatus(`총 품목 ${nf(S.items.length)}건 · 서버 집계 ${age < 5 ? "방금" : age + "초 전"} 기준`);
+    } else {
+      setStatus("기준 정보 불러오는 중…"); setBar(8);
+      const [loc, attrs, mem] = await Promise.all([
+        apiAll("v1/locations"),
+        apiAll("v1/item-attrs"),
+        api("v1/members").catch(() => ({items:[]})),
+      ]);
+      setStatus("품목/재고 불러오는 중…"); setBar(25);
+      const it = await apiAll("v1/items", null, {
+        onPage: n => { setStatus(`품목 ${nf(n)}건 불러옴…`); setBar(Math.min(90, 25 + n / 60)); }
+      });
+      setData({locations: loc.list, itemAttrs: attrs.list, members: (mem.items || []), items: it.list});
+      setStatus(`총 품목 ${nf(S.items.length)}건 · ${new Date().toLocaleTimeString("ko-KR")} 기준`);
+    }
+    saveCache();
+  } catch (e) {
+    showErr(e.message);
+    setStatus("");
+  } finally {
+    setBar(0);
+    $("#btnReload").disabled = false;
+  }
+}
+
+function fillLocationSelects(){
+  const opts = `<option value="">전체 창고</option>` +
+    S.locations.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join("");
+  const keep1 = $("#fLoc").value, keep2 = $("#txLoc").value;
+  $("#fLoc").innerHTML = opts;  $("#fLoc").value = keep1;
+  $("#txLoc").innerHTML = opts; $("#txLoc").value = keep2;
+}
+
+/** 팀/파트 같은 분류는 박스히어로 '항목 속성'으로 관리되므로 속성별 필터를 동적으로 생성 */
+function buildAttrFilters(){
+  const box = $("#attrFilters");
+  const cats = S.attrSpecs.filter(a => a.attr_type === "text");
+  box.innerHTML = cats.map(a => {
+    const vals = [...new Set(S.items
+      .map(i => (i.attrs || []).find(x => x.id === a.id)?.value)
+      .filter(v => v !== undefined && v !== null && String(v).trim() !== "")
+    )].sort((x,y) => String(x).localeCompare(String(y), "ko"));
+    if (!vals.length) return "";
+    const cur = S.attrFilter[a.attr_name] || "";
+    return `<div class="f"><label>${esc(a.attr_name)}</label>
+      <select data-attr="${esc(a.attr_name)}">
+        <option value="">전체</option>
+        ${vals.map(v => `<option value="${esc(v)}"${String(v)===cur?" selected":""}>${esc(v)}</option>`).join("")}
+      </select></div>`;
+  }).join("");
+  box.querySelectorAll("select").forEach(sel => sel.addEventListener("change", () => {
+    S.attrFilter[sel.dataset.attr] = sel.value;
+    renderKPI(); renderStock();
+  }));
+}
+
+/* ---------------- 파생 계산 ---------------- */
+const attrVal = (item, name) => (item.attrs || []).find(a => a.attr_name === name || a.name === name)?.value;
+
+/** 안전재고/최소재고 성격의 숫자 속성 자동 인식 */
+const MIN_RE = /(안전\s*재고|최소\s*재고|적정\s*재고|min(imum)?\s*stock|safety\s*stock|reorder)/i;
+function minStockOf(item){
+  for (const a of (item.attrs || [])) {
+    const nm = a.name || a.attr_name || "";
+    if (a.type === "number" && MIN_RE.test(nm)) return Number(a.value) || 0;
+  }
+  return null;
+}
+
+/** 선택된 창고 기준 수량 */
+function qtyOf(item, locId){
+  if (!locId) return Number(item.quantity) || 0;
+  const q = (item.quantities || []).find(x => x.location_id === Number(locId));
+  return q ? Number(q.quantity) || 0 : 0;
+}
+
+function filteredItems(){
+  const q = $("#q").value.trim().toLowerCase();
+  const locId = $("#fLoc").value;
+  const st = $("#fStock").value;
+  const th = Number($("#fThreshold").value) || 0;
+
+  return S.items.filter(i => {
+    if (q) {
+      const hay = `${i.name} ${i.sku} ${i.barcode}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    for (const [name, val] of Object.entries(S.attrFilter)) {
+      if (!val) continue;
+      if (String(attrVal(i, name) ?? "") !== String(val)) return false;
+    }
+    const qty = qtyOf(i, locId);
+    if (st === "has"  && !(qty > 0)) return false;
+    if (st === "zero" && qty !== 0) return false;
+    if (st === "low") {
+      const min = minStockOf(i);
+      const limit = min !== null ? min : th;
+      if (!(qty <= limit)) return false;
+    }
+    return true;
+  });
+}
+
+/* ---------------- KPI ---------------- */
+function renderKPI(){
+  const locId = $("#fLoc").value;
+  const list = filteredItems();
+  const th = Number($("#fThreshold").value) || 0;
+
+  let totQty = 0, totCost = 0, zero = 0, low = 0;
+  for (const i of list) {
+    const q = qtyOf(i, locId);
+    totQty += q;
+    totCost += q * (parseFloat(i.cost) || 0);
+    if (q === 0) zero++;
+    else {
+      const min = minStockOf(i);
+      const limit = min !== null ? min : th;
+      if (limit > 0 && q <= limit) low++;
+    }
+  }
+  const cur = S.team?.currency_symbol || "";
+  const locLabel = locId ? (S.locName.get(Number(locId)) || "선택 창고") : "전체 창고";
+
+  $("#kpis").innerHTML = [
+    ["품목 수", nf(list.length), locLabel],
+    ["총 재고 수량", nf(totQty), locLabel],
+    ["재고 금액(원가)", cur + nf(Math.round(totCost)), "cost × 수량"],
+    ["재고없음 품목", nf(zero), "수량 0", zero ? "bad" : ""],
+    ["재고부족 품목", nf(low), "안전재고 기준 이하", low ? "warn" : ""],
+    ["창고 수", nf(S.locations.length), `팀원 ${nf(S.members.length)}명`],
+  ].map(([k, v, s, cls]) => `<div class="kpi ${cls||""}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${esc(s)}</div></div>`).join("");
+}
+
+/* ---------------- 재고 표 ---------------- */
+function stockColumns(){
+  const locId = $("#fLoc").value;
+  const cols = [
+    {k:"photo", t:"", num:false, get:i => i.photo_url ? `<img class="thumb" src="${esc(i.photo_url)}" loading="lazy">` : "", raw:() => ""},
+    {k:"name", t:"품목명", cls:"name", get:i => esc(i.name), raw:i => i.name},
+    {k:"sku",  t:"SKU",  get:i => esc(i.sku), raw:i => i.sku},
+    {k:"barcode", t:"바코드", get:i => esc(i.barcode), raw:i => i.barcode},
+  ];
+  for (const a of S.attrSpecs) {
+    cols.push({k:"attr:"+a.attr_name, t:a.attr_name, num:a.attr_type === "number",
+      get:i => esc(attrVal(i, a.attr_name) ?? ""), raw:i => attrVal(i, a.attr_name) ?? ""});
+  }
+  if (locId) {
+    const nm = S.locName.get(Number(locId)) || "선택 창고";
+    cols.push({k:"qty", t:nm + " 수량", num:true, get:i => qtyCell(i, locId), raw:i => qtyOf(i, locId)});
+    cols.push({k:"total", t:"전체 수량", num:true, get:i => nf(i.quantity), raw:i => Number(i.quantity)||0});
+  } else {
+    for (const l of S.locations) {
+      cols.push({k:"loc:"+l.id, t:l.name, num:true,
+        get:i => { const v = qtyOf(i, l.id); return v ? nf(v) : `<span style="color:var(--muted)">·</span>`; },
+        raw:i => qtyOf(i, l.id)});
+    }
+    cols.push({k:"total", t:"합계 수량", num:true, get:i => qtyCell(i, ""), raw:i => Number(i.quantity)||0});
+  }
+  cols.push({k:"cost", t:"원가", num:true, get:i => nf(i.cost), raw:i => parseFloat(i.cost)||0});
+  cols.push({k:"amount", t:"재고금액", num:true,
+    get:i => nf(Math.round(qtyOf(i, locId) * (parseFloat(i.cost)||0))),
+    raw:i => Math.round(qtyOf(i, locId) * (parseFloat(i.cost)||0))});
+  return cols;
+}
+
+function qtyCell(item, locId){
+  const q = qtyOf(item, locId);
+  const th = Number($("#fThreshold").value) || 0;
+  const min = minStockOf(item);
+  const limit = min !== null ? min : th;
+  if (q === 0) return `<span class="zero">0</span>`;
+  if (limit > 0 && q <= limit) return `<span class="low">${nf(q)}</span>`;
+  return nf(q);
+}
+
+function renderStock(){
+  const cols = stockColumns();
+  const list = filteredItems();
+  const {k, dir} = S.sort.stock;
+  const col = cols.find(c => c.k === k) || cols[1];
+  list.sort((a,b) => cmp(col.raw(a), col.raw(b)) * dir);
+
+  $("#tblStock thead").innerHTML = "<tr>" + cols.map(c =>
+    `<th class="${c.num?"n":""}" data-k="${esc(c.k)}">${esc(c.t)}${k===c.k?(dir>0?" ▲":" ▼"):""}</th>`).join("") + "</tr>";
+  $("#tblStock tbody").innerHTML = list.length
+    ? list.map(i => "<tr>" + cols.map(c => `<td class="${c.cls||""} ${c.num?"n":""}">${c.get(i)}</td>`).join("") + "</tr>").join("")
+    : `<tr><td class="empty" colspan="${cols.length}">조건에 맞는 품목이 없습니다.</td></tr>`;
+  $("#stockCount").innerHTML = `표시 <b>${nf(list.length)}</b> / 전체 ${nf(S.items.length)} 품목`;
+
+  $$("#tblStock thead th").forEach(th => th.addEventListener("click", () => {
+    const key = th.dataset.k;
+    S.sort.stock = {k:key, dir: S.sort.stock.k === key ? -S.sort.stock.dir : 1};
+    renderStock();
+  }));
+}
+
+function cmp(a, b){
+  const na = typeof a === "number", nb = typeof b === "number";
+  if (na && nb) return a - b;
+  return String(a ?? "").localeCompare(String(b ?? ""), "ko", {numeric:true});
+}
+
+/* ---------------- 창고별 집계 ---------------- */
+function renderLoc(){
+  const rows = S.locations.map(l => {
+    let kinds = 0, qty = 0, amt = 0;
+    for (const i of S.items) {
+      const q = qtyOf(i, l.id);
+      if (q !== 0) { kinds++; qty += q; amt += q * (parseFloat(i.cost)||0); }
+    }
+    return {name:l.name, kinds, quantity:qty, amount:Math.round(amt), memo:l.memo || ""};
+  });
+  const cols = [
+    {k:"name", t:"창고", raw:r=>r.name}, {k:"kinds", t:"보유 품목수", num:1, raw:r=>r.kinds},
+    {k:"quantity", t:"총 수량", num:1, raw:r=>r.quantity}, {k:"amount", t:"재고금액", num:1, raw:r=>r.amount},
+    {k:"memo", t:"메모", raw:r=>r.memo},
+  ];
+  const {k, dir} = S.sort.loc;
+  const col = cols.find(c => c.k === k) || cols[0];
+  rows.sort((a,b) => cmp(col.raw(a), col.raw(b)) * dir);
+
+  $("#tblLoc thead").innerHTML = "<tr>" + cols.map(c =>
+    `<th class="${c.num?"n":""}" data-k="${c.k}">${c.t}${k===c.k?(dir>0?" ▲":" ▼"):""}</th>`).join("") + "</tr>";
+  $("#tblLoc tbody").innerHTML = rows.map(r => `<tr>
+      <td>${esc(r.name)}</td><td class="n">${nf(r.kinds)}</td><td class="n">${nf(r.quantity)}</td>
+      <td class="n">${nf(r.amount)}</td><td>${esc(r.memo)}</td></tr>`).join("")
+    || `<tr><td class="empty" colspan="5">창고가 없습니다.</td></tr>`;
+  $("#locCount").innerHTML = `창고 <b>${nf(rows.length)}</b>곳`;
+  S._locRows = rows;
+
+  $$("#tblLoc thead th").forEach(th => th.addEventListener("click", () => {
+    const key = th.dataset.k;
+    S.sort.loc = {k:key, dir: S.sort.loc.k === key ? -S.sort.loc.dir : 1};
+    renderLoc();
+  }));
+}
+
+/* ---------------- 입출고 내역 ---------------- */
+function txDateRange(){
+  const sel = $("#txRange").value;
+  if (sel === "custom") {
+    const f = $("#txFrom").value, t = $("#txTo").value;
+    return {from: f ? new Date(f + "T00:00:00") : null, to: t ? new Date(t + "T23:59:59") : new Date()};
+  }
+  const days = Number(sel);
+  const to = new Date();
+  const from = new Date(); from.setDate(from.getDate() - days + 1); from.setHours(0,0,0,0);
+  return {from, to};
+}
+
+async function loadTx(){
+  clearErr();
+  const {from, to} = txDateRange();
+  const wantDetail = $("#txDetail").checked;
+  const type = $("#txType").value;
+  $("#btnLoadTx").disabled = true;
+
+  try {
+    // /v1/transactions 는 transaction_time 내림차순 → 시작일보다 오래된 건이 나오면 중단
+    setStatus("입출고 내역 불러오는 중…"); setBar(10);
+    let reachedEnd = false;
+    const r = await apiAll("v1/transactions", type ? {type} : null, {
+      maxPages: 200,
+      onPage: n => { setStatus(`거래 ${nf(n)}건 스캔…`); setBar(Math.min(55, 10 + n/40)); },
+      stop: batch => {
+        if (!from || !batch.length) return false;
+        const oldest = new Date(batch[batch.length - 1].transaction_time);
+        if (oldest < from) { reachedEnd = true; return true; }
+        return false;
+      }
+    });
+    let txs = r.list.filter(t => {
+      const d = new Date(t.transaction_time);
+      return (!from || d >= from) && (!to || d <= to);
+    });
+    if (r.truncated && !reachedEnd) {
+      showErr(`거래 건수가 매우 많아 최근 ${nf(r.list.length)}건까지만 조회했습니다. 기간을 좁혀서 다시 조회하세요.`);
+    }
+
+    let rows = [];
+    if (wantDetail && txs.length) {
+      // 품목 단위 라인은 상세 조회 필요 (목록에는 건수/총수량만 옴)
+      const details = await fetchDetails(txs);
+      for (const t of details) {
+        for (const line of (t.items || [])) {
+          const it = line.item || {};
+          rows.push({
+            time: t.transaction_time, type: t.type,
+            from: t.from_location?.name || "", to: t.to_location?.name || "",
+            partner: t.partner?.name || "", user: t.created_by?.name || "",
+            item: it.name ?? line.name ?? "", sku: it.sku ?? line.sku ?? "", barcode: it.barcode ?? line.barcode ?? "",
+            qty: Number(line.quantity) || 0,
+            after: line.new_stock_level ?? line.to_location_new_stock_level ?? "",
+            memo: t.memo || "", url: t.url, id: t.id, kinds: t.count_of_items,
+          });
+        }
+      }
+    } else {
+      rows = txs.map(t => ({
+        time: t.transaction_time, type: t.type,
+        from: t.from_location?.name || "", to: t.to_location?.name || "",
+        partner: t.partner?.name || "", user: t.created_by?.name || "",
+        item: `(품목 ${nf(t.count_of_items)}종)`, sku: "", barcode: "",
+        qty: Number(t.total_quantity) || 0, after: "",
+        memo: t.memo || "", url: t.url, id: t.id, kinds: t.count_of_items,
+      }));
+    }
+    S.txRows = rows;
+    renderTx();
+    setStatus(`거래 ${nf(txs.length)}건 / 라인 ${nf(rows.length)}건 · ${new Date().toLocaleTimeString("ko-KR")} 기준`);
+  } catch (e) {
+    showErr(e.message);
+  } finally {
+    setBar(0);
+    $("#btnLoadTx").disabled = false;
+  }
+}
+
+/** 상세 병렬 조회 (동시 5 / 429 자동 백오프는 api() 내부 처리) */
+async function fetchDetails(txs){
+  const out = [];
+  const CONC = 5;
+  let idx = 0, done = 0;
+  async function worker(){
+    while (idx < txs.length) {
+      const i = idx++;
+      try {
+        const r = await api(`v1/transactions/${txs[i].id}`);
+        out.push(r.item || r);
+      } catch { out.push(txs[i]); }
+      done++;
+      if (done % 5 === 0 || done === txs.length) {
+        setStatus(`품목 상세 ${nf(done)}/${nf(txs.length)}건…`);
+        setBar(55 + 44 * done / txs.length);
+      }
+    }
+  }
+  await Promise.all(Array.from({length: Math.min(CONC, txs.length)}, worker));
+  out.sort((a,b) => new Date(b.transaction_time) - new Date(a.transaction_time) || b.id - a.id);
+  return out;
+}
+
+function filteredTx(){
+  const q = $("#txQ").value.trim().toLowerCase();
+  const locId = $("#txLoc").value;
+  const locNm = locId ? (S.locName.get(Number(locId)) || "") : "";
+  return S.txRows.filter(r => {
+    if (locNm && r.to !== locNm && r.from !== locNm) return false;
+    if (q) {
+      const hay = `${r.item} ${r.sku} ${r.barcode} ${r.partner} ${r.user} ${r.memo} ${r.to} ${r.from}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+const TX_COLS = [
+  {k:"time", t:"일시", raw:r=>r.time, get:r=>fmtDT(r.time)},
+  {k:"type", t:"유형", raw:r=>r.type, get:r=>`<span class="pill ${r.type}">${TYPE_KO[r.type]||r.type}</span>`},
+  {k:"item", t:"품목", cls:"name", raw:r=>r.item, get:r=>esc(r.item)},
+  {k:"sku", t:"SKU", raw:r=>r.sku, get:r=>esc(r.sku)},
+  {k:"qty", t:"수량", num:1, raw:r=>r.qty,
+   get:r=>`<span style="color:${r.qty<0?"var(--out)":"var(--in)"};font-weight:700">${r.qty>0?"+":""}${nf(r.qty)}</span>`},
+  {k:"after", t:"이후 재고", num:1, raw:r=>r.after===""?-1:Number(r.after), get:r=>r.after===""?"":nf(r.after)},
+  {k:"from", t:"출발 창고", raw:r=>r.from, get:r=>esc(r.from)},
+  {k:"to", t:"대상 창고", raw:r=>r.to, get:r=>esc(r.to)},
+  {k:"partner", t:"거래처", raw:r=>r.partner, get:r=>esc(r.partner)},
+  {k:"user", t:"담당자", raw:r=>r.user, get:r=>esc(r.user)},
+  {k:"memo", t:"메모", raw:r=>r.memo, get:r=>esc(r.memo)},
+  {k:"url", t:"", raw:r=>"", get:r=>r.url?`<a class="txlink" href="${esc(r.url)}" target="_blank" rel="noopener">보기↗</a>`:""},
+];
+
+function renderTx(){
+  const list = filteredTx();
+  const {k, dir} = S.sort.tx;
+  const col = TX_COLS.find(c => c.k === k) || TX_COLS[0];
+  list.sort((a,b) => cmp(col.raw(a), col.raw(b)) * dir);
+
+  $("#tblTx thead").innerHTML = "<tr>" + TX_COLS.map(c =>
+    `<th class="${c.num?"n":""}" data-k="${c.k}">${c.t}${k===c.k?(dir>0?" ▲":" ▼"):""}</th>`).join("") + "</tr>";
+  $("#tblTx tbody").innerHTML = list.length
+    ? list.map(r => "<tr>" + TX_COLS.map(c => `<td class="${c.cls||""} ${c.num?"n":""}">${c.get(r)}</td>`).join("") + "</tr>").join("")
+    : `<tr><td class="empty" colspan="${TX_COLS.length}">내역이 없습니다.</td></tr>`;
+
+  const inQ = list.filter(r=>r.qty>0).reduce((s,r)=>s+r.qty,0);
+  const outQ = list.filter(r=>r.qty<0).reduce((s,r)=>s+r.qty,0);
+  $("#txCount").innerHTML = `표시 <b>${nf(list.length)}</b>건 · 입고합계 <b style="color:var(--in)">+${nf(inQ)}</b> · 출고합계 <b style="color:var(--out)">${nf(outQ)}</b>`;
+
+  $$("#tblTx thead th").forEach(th => th.addEventListener("click", () => {
+    const key = th.dataset.k;
+    S.sort.tx = {k:key, dir: S.sort.tx.k === key ? -S.sort.tx.dir : 1};
+    renderTx();
+  }));
+}
+
+/* =========================================================================
+   내려받기 : 의존성 없는 XLSX(ZIP store) 생성기 + CSV
+   ========================================================================= */
+let CRC_TABLE = null;
+function crc32(buf){
+  if (!CRC_TABLE) {
+    CRC_TABLE = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      CRC_TABLE[n] = c >>> 0;
+    }
+  }
+  let c = 0 ^ -1;
+  for (let i = 0; i < buf.length; i++) c = (c >>> 8) ^ CRC_TABLE[(c ^ buf[i]) & 0xFF];
+  return (c ^ -1) >>> 0;
+}
+function zipStore(files){
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  const d = new Date();
+  const dosTime = ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xFFFF;
+  const dosDate = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF;
+  let offset = 0;
+
+  for (const f of files) {
+    const name = enc.encode(f.name);
+    const data = f.data instanceof Uint8Array ? f.data : enc.encode(f.data);
+    const crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+    lh.setUint16(8, 0, true); lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+    lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true);
+    cd.setUint16(8, 0x0800, true); cd.setUint16(10, 0, true);
+    cd.setUint16(12, dosTime, true); cd.setUint16(14, dosDate, true);
+    cd.setUint32(16, crc, true); cd.setUint32(20, data.length, true); cd.setUint32(24, data.length, true);
+    cd.setUint16(28, name.length, true); cd.setUint16(30, 0, true); cd.setUint16(32, 0, true);
+    cd.setUint16(34, 0, true); cd.setUint16(36, 0, true); cd.setUint32(38, 0, true);
+    cd.setUint32(42, offset, true);
+    central.push(new Uint8Array(cd.buffer), name);
+    offset += 30 + name.length + data.length;
+  }
+  const cdSize = central.reduce((s, p) => s + p.length, 0);
+  const eo = new DataView(new ArrayBuffer(22));
+  eo.setUint32(0, 0x06054b50, true); eo.setUint16(4, 0, true); eo.setUint16(6, 0, true);
+  eo.setUint16(8, files.length, true); eo.setUint16(10, files.length, true);
+  eo.setUint32(12, cdSize, true); eo.setUint32(16, offset, true); eo.setUint16(20, 0, true);
+  return new Blob([...parts, ...central, new Uint8Array(eo.buffer)], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+const xesc = s => String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+const colRef = n => { let s = ""; n++; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - 1 - m) / 26; } return s; };
+function sheetXml(rows){
+  const body = rows.map((row, r) => "<row r=\"" + (r+1) + "\">" + row.map((v, c) => {
+    const ref = colRef(c) + (r + 1);
+    if (typeof v === "number" && isFinite(v)) return `<c r="${ref}"><v>${v}</v></c>`;
+    const s = v == null ? "" : String(v);
+    if (s === "") return "";
+    return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xesc(s)}</t></is></c>`;
+  }).join("") + "</row>").join("");
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${body}</sheetData></worksheet>`;
+}
+function downloadXlsx(filename, sheets){
+  const ct = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}
+</Types>`;
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const wb = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>${sheets.map((s,i)=>`<sheet name="${xesc(s.name).slice(0,31)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join("")}</sheets></workbook>`;
+  const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join("")}
+</Relationships>`;
+  const files = [
+    {name:"[Content_Types].xml", data:ct},
+    {name:"_rels/.rels", data:rels},
+    {name:"xl/workbook.xml", data:wb},
+    {name:"xl/_rels/workbook.xml.rels", data:wbRels},
+    ...sheets.map((s,i) => ({name:`xl/worksheets/sheet${i+1}.xml`, data:sheetXml(s.rows)})),
+  ];
+  saveBlob(zipStore(files), filename);
+}
+function downloadCsv(filename, rows){
+  const body = rows.map(r => r.map(v => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(",")).join("\r\n");
+  saveBlob(new Blob(["﻿" + body], {type:"text/csv;charset=utf-8"}), filename);
+}
+function saveBlob(blob, filename){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+const stamp = () => { const d = new Date(), p = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; };
+
+/* 표 → 2차원 배열 */
+function stockMatrix(){
+  const cols = stockColumns().filter(c => c.k !== "photo");
+  const list = filteredItems();
+  const {k, dir} = S.sort.stock;
+  const col = cols.find(c => c.k === k);
+  if (col) list.sort((a,b) => cmp(col.raw(a), col.raw(b)) * dir);
+  return [cols.map(c => c.t || c.k), ...list.map(i => cols.map(c => c.raw(i)))];
+}
+function txMatrix(){
+  const cols = TX_COLS.filter(c => c.k !== "url");
+  const list = filteredTx();
+  return [
+    ["일시","유형","품목","SKU","바코드","수량","이후 재고","출발 창고","대상 창고","거래처","담당자","메모","거래ID"],
+    ...list.map(r => [fmtDT(r.time), TYPE_KO[r.type]||r.type, r.item, r.sku, r.barcode, r.qty,
+                      r.after === "" ? "" : Number(r.after), r.from, r.to, r.partner, r.user, r.memo, r.id]),
+  ];
+}
+function locMatrix(){
+  return [["창고","보유 품목수","총 수량","재고금액","메모"],
+    ...(S._locRows || []).map(r => [r.name, r.kinds, r.quantity, r.amount, r.memo])];
+}
+function metaSheet(){
+  const locId = $("#fLoc").value;
+  return {name:"조회조건", rows:[
+    ["팀", S.team?.name || ""], ["기준시각", fmtDT(new Date().toISOString())],
+    ["창고", locId ? (S.locName.get(Number(locId)) || "") : "전체"],
+    ["검색어", $("#q").value], ["재고상태", $("#fStock").selectedOptions[0]?.text || ""],
+    ["재고부족 기준", Number($("#fThreshold").value) || 0],
+    ...Object.entries(S.attrFilter).filter(([,v]) => v).map(([k,v]) => [k, v]),
+  ]};
+}
+
+/* ---------------- 이벤트 ---------------- */
+function bind(){
+  $("#btnSetup").addEventListener("click", () => $("#setup").classList.toggle("hidden"));
+  $("#btnConnect").addEventListener("click", async () => {
+    S.token = $("#token").value.trim();
+    if (!S.token) return showErr("토큰을 입력하세요.");
+    S.mode = "direct";
+    if ($("#remember").checked) localStorage.setItem(LS_TOKEN, S.token);
+    else localStorage.removeItem(LS_TOKEN);
+    await connect();
+  });
+  $("#token").addEventListener("keydown", e => { if (e.key === "Enter") $("#btnConnect").click(); });
+  $("#btnReload").addEventListener("click", () => { loadAll(); if (S.txRows.length) loadTx(); });
+
+  $$(".tab").forEach(t => t.addEventListener("click", () => {
+    $$(".tab").forEach(x => x.classList.toggle("on", x === t));
+    S.tab = t.dataset.tab;
+    ["stock","tx","loc"].forEach(k => $("#tab-" + k).classList.toggle("hidden", k !== S.tab));
+  }));
+
+  let deb;
+  const rerender = () => { clearTimeout(deb); deb = setTimeout(() => { renderKPI(); renderStock(); }, 180); };
+  $("#q").addEventListener("input", rerender);
+  $("#fLoc").addEventListener("change", () => { renderKPI(); renderStock(); });
+  $("#fStock").addEventListener("change", () => { renderKPI(); renderStock(); });
+  $("#fThreshold").addEventListener("input", rerender);
+
+  $("#txRange").addEventListener("change", () => {
+    const custom = $("#txRange").value === "custom";
+    $("#txFrom").disabled = $("#txTo").disabled = !custom;
+    if (!custom) { const {from,to} = txDateRange(); $("#txFrom").value = ymd(from); $("#txTo").value = ymd(to); }
+  });
+  $("#btnLoadTx").addEventListener("click", loadTx);
+  $("#txQ").addEventListener("input", () => { clearTimeout(deb); deb = setTimeout(renderTx, 180); });
+  $("#txLoc").addEventListener("change", renderTx);
+
+  $("#btnXlsxStock").addEventListener("click", () =>
+    downloadXlsx(`박스히어로_재고현황_${stamp()}.xlsx`, [{name:"재고현황", rows:stockMatrix()}, metaSheet()]));
+  $("#btnCsvStock").addEventListener("click", () =>
+    downloadCsv(`박스히어로_재고현황_${stamp()}.csv`, stockMatrix()));
+  $("#btnXlsxTx").addEventListener("click", () => {
+    if (!S.txRows.length) return showErr("먼저 [불러오기]로 입출고 내역을 조회하세요.");
+    downloadXlsx(`박스히어로_입출고내역_${stamp()}.xlsx`, [{name:"입출고내역", rows:txMatrix()}]);
+  });
+  $("#btnCsvTx").addEventListener("click", () => {
+    if (!S.txRows.length) return showErr("먼저 [불러오기]로 입출고 내역을 조회하세요.");
+    downloadCsv(`박스히어로_입출고내역_${stamp()}.csv`, txMatrix());
+  });
+  $("#btnXlsxLoc").addEventListener("click", () =>
+    downloadXlsx(`박스히어로_창고별집계_${stamp()}.xlsx`, [{name:"창고별집계", rows:locMatrix()}]));
+
+  $("#autoRefresh").addEventListener("change", e => {
+    clearInterval(S.timer);
+    if (e.target.checked) S.timer = setInterval(() => { if (!document.hidden) loadAll(); }, 60000);
+  });
+}
+
+/* ---------------- 시작 ---------------- */
+(async function init(){
+  bind();
+  const {from, to} = txDateRange();
+  $("#txFrom").value = ymd(from); $("#txTo").value = ymd(to);
+  $("#txFrom").disabled = $("#txTo").disabled = true;
+
+  // 1) 캐시가 있으면 먼저 그려서 빈 화면을 없앤다 (실제 조회는 뒤에서 진행)
+  const cache = readCache();
+  if (cache) {
+    setData(cache);
+    $("#teamBadge").textContent = S.team?.name || "캐시";
+    $("#setup").classList.add("hidden");
+    const mins = Math.round((Date.now() - cache.at) / 60000);
+    setStatus(`이전 조회 결과 표시 중 (${mins < 1 ? "1분 이내" : mins + "분 전"}) · 최신 데이터 확인 중…`);
+  }
+
+  // 2) 실제 조회
+  if (await detectProxy()) {                      // 서버 프록시 배포 환경 → 토큰 불필요
+    S.mode = "proxy";
+    $("#setup").classList.add("hidden");
+    $("#btnSetup").classList.add("hidden");
+    await connect();
+    return;
+  }
+  const saved = localStorage.getItem(LS_TOKEN);
+  if (saved) { S.token = saved; $("#token").value = saved; await connect(); }
+  else if (cache) setStatus(`이전 조회 결과 표시 중 · 토큰을 입력하면 갱신됩니다`);
+})();
+</script>
+</body>
+</html>
