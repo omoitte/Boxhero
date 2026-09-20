@@ -76,6 +76,9 @@ th,td{padding:8px 11px;text-align:left;white-space:nowrap;border-bottom:1px soli
 th{position:sticky;top:0;background:var(--panel);z-index:2;font-weight:700;font-size:11.5px;color:var(--muted);
   box-shadow:inset 0 -1px 0 var(--line)}
 th.n,td.n{text-align:right;font-variant-numeric:tabular-nums}
+/* 머리글 옆 작은 보조 설명 — 「입고=검수일」처럼 뜻만 덧붙입니다. */
+.thsub{font-weight:600;font-size:10px;color:var(--muted);opacity:.7;margin-left:4px}
+td.nowrap{font-variant-numeric:tabular-nums}
 tbody tr:hover{background:var(--accent-soft)}
 td.name{white-space:normal;min-width:200px;font-weight:600}
 .pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:10.5px;font-weight:700;color:#fff}
@@ -96,7 +99,7 @@ a.lnk{color:var(--accent);text-decoration:none;font-weight:600}
   <div class="top">
     <div class="titlebox">
       <h1>재고관리 현황</h1>
-      <div class="subtitle">사업지원본부 전략구매팀 · v1.1 · KOLAS 품질절차서 FITI-P-006 외부 제공 서비스(박스히어로)</div>
+      <div class="subtitle">사업지원본부 · 전략구매팀 · v1.1</div>
     </div>
     <span class="badge" id="teamBadge">미연결</span>
     <span id="status" style="font-size:11.5px;color:var(--muted)"></span>
@@ -157,7 +160,7 @@ a.lnk{color:var(--accent);text-decoration:none;font-weight:600}
     </div>
     <div class="rowcount" id="txCount"></div>
     <div class="box"><table id="tblTx"><thead></thead><tbody></tbody></table></div>
-    <p class="hint">품목명은 박스히어로가 목록에 주지 않습니다. 줄의 <b>[보기]</b>를 누르면 박스히어로에서 그 건이 열립니다.</p>
+    <p class="hint"><b>입고</b>는 검수조서가 작성되면 잡힙니다 — 그 줄의 <b>일시</b>가 검수일자, <b>담당자</b>가 검수자입니다. 「유형」을 <b>입고</b>로 두면 검수 건만 봅니다.<br>품목명은 박스히어로가 목록에 주지 않습니다. 줄의 <b>[보기]</b>를 누르면 박스히어로에서 그 건이 열립니다.</p>
   </section>
 
   <!-- 창고별 집계 : 창고 API 1회 -->
@@ -311,15 +314,18 @@ function filteredTx(){
 
 function renderTx(){
   const list = filteredTx();
+  /* 입고는 검수조서가 작성돼야 잡힙니다. 그래서 입고 줄의
+     일시 = 검수일자, 담당자 = 검수자 로 읽으면 됩니다.
+     모니터링 목적이라 연도까지 보이게 하고 머리글에도 그렇게 적습니다. */
   $("#tblTx thead").innerHTML =
-    "<tr><th>일시</th><th>유형</th><th class='n'>품목</th><th class='n'>수량</th>" +
-    "<th>창고</th><th>거래처</th><th>담당자</th><th>메모</th><th></th></tr>";
+    "<tr><th>일시 <span class='thsub'>입고=검수일</span></th><th>유형</th><th class='n'>품목</th><th class='n'>수량</th>" +
+    "<th>창고</th><th>거래처</th><th>담당자 <span class='thsub'>입고=검수자</span></th><th>메모</th><th></th></tr>";
 
   $("#tblTx tbody").innerHTML = list.length ? list.map(t => {
     const w = kst(t.transaction_time);
     const place = t.type === "out" ? (t.from_location?.name || t.to_location?.name) : (t.to_location?.name || t.from_location?.name);
     return "<tr>" +
-      "<td>" + w.date.slice(5).replace("-",".") + " " + w.time + "</td>" +
+      "<td class='nowrap'>" + w.date.replace(/-/g,".") + " " + w.time + "</td>" +
       "<td><span class='pill " + t.type + "'>" + (TYPE_KO[t.type]||t.type) + "</span></td>" +
       "<td class='n'>" + nf(t.count_of_items) + "종</td>" +
       "<td class='n'>" + nf(Math.abs(Number(t.total_quantity)||0)) + "</td>" +
@@ -405,10 +411,33 @@ $("#btnForget").addEventListener("click", ()=>{
 $("#token").addEventListener("keydown", e => { if (e.key === "Enter") $("#btnConnect").click(); });
 $("#btnReload").addEventListener("click", load);
 
-$$(".tab").forEach(t => t.addEventListener("click", ()=>{
-  $$(".tab").forEach(x => x.classList.toggle("on", x === t));
-  ["tx","loc","item"].forEach(k => $("#tab-" + k).classList.toggle("hidden", k !== t.dataset.tab));
-}));
+/* 탭 전환.
+   예전 코드는 ["tx","loc","item"] 을 그대로 돌렸는데 #tab-item 이 없어서
+   $("#tab-item") 가 null 이 되고, 탭을 누르면 거기서 예외가 나 전환이 멈췄습니다.
+   없는 칸은 건너뜁니다. */
+function showTab(name){
+  $$(".tab").forEach(x => x.classList.toggle("on", x.dataset.tab === name));
+  ["tx","loc","item"].forEach(k => {
+    const el = $("#tab-" + k);
+    if (el) el.classList.toggle("hidden", k !== name);
+  });
+  if (location.hash.slice(1) !== name) {
+    try { history.replaceState(null, "", "#" + name); } catch(e){}
+  }
+}
+
+$$(".tab").forEach(t => t.addEventListener("click", () => showTab(t.dataset.tab)));
+
+/* 주소 끝에 #tx(입출고 내역) · #loc(창고별 집계) 을 붙이면 그 탭으로 바로 엽니다.
+   업무포털의 재고관리 카드 칩이 이 주소를 씁니다. */
+(function openTabFromHash(){
+  const h = (location.hash || "").slice(1);
+  if (h === "tx" || h === "loc") showTab(h);
+})();
+window.addEventListener("hashchange", () => {
+  const h = (location.hash || "").slice(1);
+  if (h === "tx" || h === "loc") showTab(h);
+});
 
 let deb;
 const reTx = ()=>{ clearTimeout(deb); deb = setTimeout(renderTx, 150); };
