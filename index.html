@@ -84,6 +84,14 @@ td.name{white-space:normal;min-width:200px;font-weight:600}
 .pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:10.5px;font-weight:700;color:#fff}
 .pill.in{background:var(--in)} .pill.out{background:var(--out)}
 .pill.move{background:var(--move)} .pill.adjust{background:var(--adjust)}
+/* 중복 의심 입고 */
+.dup{display:inline-block;padding:1px 8px;border-radius:99px;font-size:10.5px;font-weight:700;color:#fff}
+.dup.sure{background:var(--out)} .dup.susp{background:var(--move)} .dup.split{background:var(--muted)}
+td.two{white-space:normal;min-width:215px;line-height:1.45}
+td.two .sub{font-size:10.5px;color:var(--muted);word-break:break-all}
+.tabnum{margin-left:5px;font-size:10.5px;font-weight:800;color:var(--out)}
+.chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.chk input{min-width:0;width:auto}
 .empty{padding:40px;text-align:center;color:var(--muted)}
 a.lnk{color:var(--accent);text-decoration:none;font-weight:600}
 .zero{color:var(--out);font-weight:700}
@@ -137,6 +145,7 @@ a.lnk{color:var(--accent);text-decoration:none;font-weight:600}
   <div class="tabs">
     <button class="tab on" data-tab="tx" type="button">입출고 내역</button>
     <button class="tab" data-tab="loc" type="button">창고별 집계</button>
+    <button class="tab" data-tab="dup" type="button">중복 의심 입고<span class="tabnum" id="dupNum"></span></button>
   </div>
 
   <!-- 입출고 내역 : 목록 API 1회 -->
@@ -167,6 +176,28 @@ a.lnk{color:var(--accent);text-decoration:none;font-weight:600}
   <section id="tab-loc" class="hidden">
     <div class="rowcount" id="locCount"></div>
     <div class="box"><table id="tblLoc"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- 중복 의심 입고 : 이미 받아 둔 거래 목록으로 찾습니다 (API 추가 호출 없음) -->
+  <section id="tab-dup" class="hidden">
+    <div class="bar">
+      <select id="dupWin">
+        <option value="24">24시간 이내</option>
+        <option value="72" selected>사흘 이내</option>
+        <option value="168">일주일 이내</option>
+      </select>
+      <label class="chk"><input type="checkbox" id="dupSplit"> 분할입고(정상)도 보기</label>
+      <span class="spacer"></span>
+      <button class="btn" id="btnCsvDup" type="button">CSV</button>
+    </div>
+    <div class="rowcount" id="dupCount"></div>
+    <div class="box"><table id="tblDup"><thead></thead><tbody></tbody></table></div>
+    <p class="hint"><b>입고만</b> 봅니다. <b>같은 창고 · 같은 품목수 · 같은 수량</b>이 정해진 시간 안에 두 번 잡히면 묶어서 보여 줍니다.<br>
+      <span class="dup sure">확실</span> 검수번호(qcNo)가 같습니다 — 같은 검수 건이 두 번 들어왔습니다.
+      <span class="dup susp">의심</span> 한쪽은 검수연동이고 다른 쪽은 사람이 손으로 넣었습니다.
+      <span class="dup split">분할</span> 같은 구매건의 검수 차수가 달라 <b>정상</b>입니다 (기본 숨김).<br>
+      <b>최근 100건</b> 안에서만 찾습니다. 품목명은 목록 API 가 주지 않아 <b>품목수 · 수량</b>으로 맞춰 봅니다 —
+      짝이 맞아도 실제 품목은 <b>[보기]</b>로 박스히어로에서 확인하세요. <b>지우지는 않습니다.</b></p>
   </section>
 
   <footer class="sitefoot">
@@ -268,6 +299,7 @@ async function load(){
     renderToday();
     renderTx();
     renderLoc();
+    renderDup();
     setStatus("거래 " + nf(S.txs.length) + "건 · 창고 " + nf(S.locations.length) + "곳 · " + new Date().toLocaleTimeString("ko-KR") + " 기준");
 
     // 화면을 띄운 뒤 총 품목수를 뒤에서 셉니다 (기다리지 않습니다)
@@ -354,6 +386,125 @@ function renderLoc(){
   $("#locCount").innerHTML = "창고 <b>" + nf(S.locations.length) + "</b>곳 · 총 재고 <b>" +
     nf(S.locations.reduce((s,l)=>s+(Number(l.quantity)||0),0)) + "</b>";
 }
+
+/* ---------------- 중복 의심 입고 ----------------
+   검수연동이 아침에 자동으로 넣은 건을 현장에서 모르고 오후에 또 넣어
+   재고가 부풀던 일이 있었습니다(2026-10-08 갈색메디아병).
+   이미 받아 둔 S.txs 만 보므로 API 를 더 쓰지 않습니다.
+   품목명은 목록 API 가 주지 않아 창고·품목수·수량으로 맞춰 봅니다. */
+const DUP_KO = { sure:"확실", susp:"의심", split:"분할" };
+
+/* 메모에서 구매번호·검수번호를 꺼냅니다 — 검수연동이 넣은 건에는 반드시 붙습니다.
+   예) 검수연동 / prNo=CS2026092300005 qcNo=S202609160005-1
+   검수번호 끝의 -1 · -2 는 나눠 검수한 차수라, 차수가 다르면 정상 분할입고입니다. */
+function memoKeys(m){
+  const s = String(m || "");
+  const pr = (s.match(/prNo\s*=\s*([A-Za-z0-9-]+)/i) || [])[1] || "";
+  const qc = (s.match(/qcNo\s*=\s*([A-Za-z0-9-]+)/i) || [])[1] || "";
+  return { pr, qc, linked: /검수연동/.test(s) || !!pr || !!qc };
+}
+
+function dupPairs(){
+  const winH = Number($("#dupWin")?.value) || 72;
+  const bucket = new Map();
+  S.txs.filter(t => t.type === "in").forEach(t => {
+    const k = [t.to_location?.name || "", t.count_of_items, Math.abs(Number(t.total_quantity) || 0)].join("|");
+    if (!bucket.has(k)) bucket.set(k, []);
+    bucket.get(k).push(t);
+  });
+
+  const pairs = [];
+  bucket.forEach(list => {
+    if (list.length < 2) return;
+    list.sort((a,b) => new Date(a.transaction_time) - new Date(b.transaction_time));
+    for (let i = 0; i < list.length; i++){
+      for (let j = i + 1; j < list.length; j++){
+        const a = list[i], b = list[j];
+        const gapH = (new Date(b.transaction_time) - new Date(a.transaction_time)) / 3600000;
+        if (!(gapH <= winH)) break;          // 시간순이라 더 볼 필요 없음
+        const ka = memoKeys(a.memo), kb = memoKeys(b.memo);
+        let kind, how;
+        if (ka.qc && kb.qc){
+          if (ka.qc === kb.qc)                       { kind = "sure";  how = "검수번호가 같습니다"; }
+          else if (ka.pr && kb.pr && ka.pr !== kb.pr){ kind = "other"; how = "구매건이 다릅니다"; }
+          else                                       { kind = "split"; how = "같은 구매건의 다른 검수 차수"; }
+        } else if (ka.linked !== kb.linked)          { kind = "susp";  how = "한쪽은 검수연동, 한쪽은 수기"; }
+        else                                         { kind = "susp";  how = "둘 다 수기"; }
+        pairs.push({ a, b, gapH, kind, how });
+      }
+    }
+  });
+  return pairs.sort((x,y) => new Date(y.b.transaction_time) - new Date(x.b.transaction_time));
+}
+
+function gapKo(h){
+  if (h < 1) return Math.round(h * 60) + "분";
+  if (h < 48) return (Math.round(h * 10) / 10) + "시간";
+  return (Math.round(h / 24 * 10) / 10) + "일";
+}
+
+function dupList(){
+  const showSplit = !!$("#dupSplit")?.checked;
+  return dupPairs().filter(p => p.kind !== "other" && (showSplit || p.kind !== "split"));
+}
+
+function renderDup(){
+  const list = dupList();
+
+  $("#tblDup thead").innerHTML =
+    "<tr><th>판정</th><th>창고</th><th class='n'>품목</th><th class='n'>수량</th>" +
+    "<th>먼저 들어온 건</th><th>나중 들어온 건</th><th>간격</th><th></th></tr>";
+
+  const side = t => {
+    const w = kst(t.transaction_time);
+    return "<div>" + w.date.replace(/-/g,".") + " " + w.time + " · <b>" + esc(t.created_by?.name || "—") + "</b></div>" +
+           "<div class='sub'>" + (t.memo ? esc(t.memo) : "메모 없음") + "</div>";
+  };
+
+  $("#tblDup tbody").innerHTML = list.length ? list.map(p =>
+    "<tr>" +
+      "<td><span class='dup " + p.kind + "'>" + DUP_KO[p.kind] + "</span>" +
+        "<div class='sub' style='font-size:10.5px;color:var(--muted);margin-top:3px'>" + esc(p.how) + "</div></td>" +
+      "<td>" + esc(p.b.to_location?.name || "") + "</td>" +
+      "<td class='n'>" + nf(p.b.count_of_items) + "종</td>" +
+      "<td class='n'>" + nf(Math.abs(Number(p.b.total_quantity) || 0)) + "</td>" +
+      "<td class='two'>" + side(p.a) + "</td>" +
+      "<td class='two'>" + side(p.b) + "</td>" +
+      "<td class='nowrap'>" + gapKo(p.gapH) + "</td>" +
+      "<td class='nowrap'>" +
+        "<a class='lnk' href='" + esc(p.a.url || APP) + "' target='_blank' rel='noopener'>먼저↗</a> " +
+        "<a class='lnk' href='" + esc(p.b.url || APP) + "' target='_blank' rel='noopener'>나중↗</a>" +
+      "</td>" +
+    "</tr>").join("")
+    : "<tr><td class='empty' colspan='8'>짚이는 중복이 없습니다.</td></tr>";
+
+  const sure = list.filter(p => p.kind === "sure").length;
+  const susp = list.filter(p => p.kind === "susp").length;
+  const split = list.filter(p => p.kind === "split").length;
+  $("#dupCount").innerHTML = "입고 <b>" + nf(S.txs.filter(t => t.type === "in").length) + "</b>건 중 · " +
+    "확실 <b style='color:var(--out)'>" + nf(sure) + "</b> · " +
+    "의심 <b style='color:var(--move)'>" + nf(susp) + "</b>" +
+    (split ? " · 분할(정상) <b>" + nf(split) + "</b>" : "");
+
+  /* 탭 옆 숫자는 손봐야 하는 것만 — 분할(정상)은 세지 않습니다. */
+  const need = dupPairs().filter(p => p.kind === "sure" || p.kind === "susp").length;
+  $("#dupNum").textContent = need ? need : "";
+}
+
+$("#dupWin").addEventListener("change", renderDup);
+$("#dupSplit").addEventListener("change", renderDup);
+$("#btnCsvDup").addEventListener("click", ()=>{
+  const rows = [["판정","근거","창고","품목수","수량",
+    "먼저_일시","먼저_담당자","먼저_메모","나중_일시","나중_담당자","나중_메모","간격"]];
+  dupList().forEach(p => {
+    const wa = kst(p.a.transaction_time), wb = kst(p.b.transaction_time);
+    rows.push([DUP_KO[p.kind], p.how, p.b.to_location?.name || "",
+      p.b.count_of_items, Math.abs(Number(p.b.total_quantity) || 0),
+      wa.date + " " + wa.time, p.a.created_by?.name || "", p.a.memo || "",
+      wb.date + " " + wb.time, p.b.created_by?.name || "", p.b.memo || "", gapKo(p.gapH)]);
+  });
+  csv("재고관리_중복의심입고_" + stamp() + ".csv", rows);
+});
 /* ---------------- 총 품목수 : 화면을 먼저 띄운 뒤 뒤에서 셉니다 ----------------
    박스히어로 API 에는 "총 개수" 를 주는 곳이 없어서 100개씩 넘겨 가며 세야 합니다.
    화면을 막지 않도록 렌더가 끝난 다음 백그라운드로 돌리고, 숫자는 세는 대로 갱신합니다.
@@ -417,7 +568,7 @@ $("#btnReload").addEventListener("click", load);
    없는 칸은 건너뜁니다. */
 function showTab(name){
   $$(".tab").forEach(x => x.classList.toggle("on", x.dataset.tab === name));
-  ["tx","loc","item"].forEach(k => {
+  ["tx","loc","dup","item"].forEach(k => {
     const el = $("#tab-" + k);
     if (el) el.classList.toggle("hidden", k !== name);
   });
@@ -432,11 +583,11 @@ $$(".tab").forEach(t => t.addEventListener("click", () => showTab(t.dataset.tab)
    업무포털의 재고관리 카드 칩이 이 주소를 씁니다. */
 (function openTabFromHash(){
   const h = (location.hash || "").slice(1);
-  if (h === "tx" || h === "loc") showTab(h);
+  if (h === "tx" || h === "loc" || h === "dup") showTab(h);
 })();
 window.addEventListener("hashchange", () => {
   const h = (location.hash || "").slice(1);
-  if (h === "tx" || h === "loc") showTab(h);
+  if (h === "tx" || h === "loc" || h === "dup") showTab(h);
 });
 
 let deb;
@@ -479,6 +630,43 @@ $("#btnCsvTx").addEventListener("click", ()=>{
     setStatus("토큰을 넣으면 시작합니다.");
   }
 })();
+</script>
+
+<!-- ─────────────────────────────────────────────────────────────
+     업무포털 주소 — 포털 주소가 바뀌면 **아래 한 줄만** 고치세요.
+     이 스크립트가 페이지 안의 「← 업무포털」 링크를 전부 바꿔 줍니다.
+     ───────────────────────────────────────────────────────────── -->
+<script>
+  window.FITI_PORTAL = 'https://fiti-procurement-portal.vercel.app/';
+  (function () {
+    /* 수요부서 포털에서 넘어오면 주소에 ?from=dept&back=<돌아갈 주소> 가 붙습니다.
+       그때는 「← 업무포털」이 전략구매팀 포털이 아니라 수요부서 포털로 돌아갑니다.
+       한 번 들어오면 그 탭이 기억하므로(sessionStorage) 앱 안에서 옮겨 다녀도 유지됩니다.
+       back 은 주소로 들어오는 값이라 https 의 vercel.app 만 받습니다. */
+    var KEY = 'fiti.portalBack';
+    function clean(u) {
+      try { var x = new URL(u); return (x.protocol === 'https:' && /\.vercel\.app$/.test(x.hostname)) ? x.origin + x.pathname : ''; }
+      catch (e) { return ''; }
+    }
+    var back = '';
+    try {
+      var p = new URLSearchParams(location.search);
+      back = (p.get('from') === 'dept') ? clean(p.get('back') || '') : '';
+      if (back) sessionStorage.setItem(KEY, back);
+      else back = clean(sessionStorage.getItem(KEY) || '');
+    } catch (e) { back = ''; }
+
+    var target = back || window.FITI_PORTAL;
+    var sel = 'a[href*="procurement-portal"], a[data-portal]';
+    document.querySelectorAll(sel).forEach(function (a) {
+      a.href = target;
+      if (!back) return;
+      a.title = '수요부서 업무포털로 이동';
+      if (!a.children.length && /업무포털/.test(a.textContent)) {
+        a.textContent = a.textContent.replace('전략구매팀 업무포털', '수요부서 업무포털').replace(/^←\s*업무포털$/, '← 수요부서 포털');
+      }
+    });
+  })();
 </script>
 </body>
 </html>
