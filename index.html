@@ -1,672 +1,250 @@
 <!doctype html>
-<html lang="ko">
-<head>
+<html lang="ko"><head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>재고관리 현황 · FITI 전략구매팀</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#16795f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="건강검진">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/icon-512.png">
+<link rel="manifest" href="/manifest.json">
+<style>[hidden]{display:none!important}*{box-sizing:border-box}body{margin:0;-webkit-text-size-adjust:100%}.login{position:fixed;inset:0;z-index:20;background:var(--bg);display:grid;place-items:center;padding:24px}.lg{width:100%;max-width:320px;display:grid;gap:12px;justify-items:center;text-align:center}.lg h2{margin:0;font-size:20px}.lg input[type=password]{text-align:center}.lg .btn{width:100%}.chip{font-size:14px;padding:7px 12px}.seg{display:grid;grid-template-columns:repeat(5,1fr);background:var(--bg);border-radius:9px;padding:2px;gap:2px}.seg button{all:unset;text-align:center;padding:6px 0;font-size:13px;border-radius:7px;cursor:pointer;color:var(--fg)}.seg button[aria-pressed=true]{background:var(--panel);box-shadow:0 1px 3px #0002;font-weight:700}.ahHead{display:grid;gap:2px}.ahVal{font-size:52px;font-weight:700;letter-spacing:-2px;color:var(--fg)}.ahUnit{font-size:20px;color:var(--mute);margin-left:2px;font-weight:600}.ahDate{font-size:16px;color:var(--mute);font-weight:600}.graph .ax{fill:var(--mute);font-size:17px}.ahAvg{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border-radius:16px;padding:16px 18px;font-size:17px}.ahAvg b{font-size:18px}.ahAbout{background:var(--bg);padding:20px 16px 90px}.ahAbout h3{font-size:24px;margin:0 0 12px}.ahAbout p{background:var(--panel);border-radius:16px;padding:18px;margin:0;font-size:17px;line-height:1.6}</style>
+<title>내 건강검진 대시보드</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
+/* layout: 폰 앱 꼴 — 위 제목줄 · 항목 고르는 칩 · 본문(탭별) · 아래 탭바 4칸 */
 :root{
-  --bg:#f5f6f8; --panel:#fff; --line:#e3e6ec; --text:#1c2030; --muted:#6b7280;
-  --accent:#4f67ff; --accent-soft:rgba(79,103,255,.09);
-  --in:#0f9d58; --out:#e2483d; --move:#f0a020; --adjust:#7c5cff;
-  --warn:#b45309; --warn-bg:#fef3c7;
-  --radius:12px; --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);
+  --bg:#f3f6f5;--panel:#ffffff;--fg:#17201d;--mute:#5d6b66;--line:#dfe6e3;
+  --accent:#16795f;--accent-soft:#e1f1eb;--hi:#c2362b;--hi-soft:#fbe6e3;--lo:#2a64b8;--lo-soft:#e3ecf9;
+  --ui:'IBM Plex Sans KR',system-ui,sans-serif;--num:'IBM Plex Mono',ui-monospace,monospace;
 }
-@media (prefers-color-scheme:dark){
-  :root{--bg:#12141a; --panel:#1a1d25; --line:#2b3040; --text:#e8eaf0; --muted:#9aa1b1;
-        --accent:#8f9eff; --accent-soft:rgba(143,158,255,.14); --warn-bg:#3a2c08; --warn:#fbbf24;}
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);
-  font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
-  font-size:13px;line-height:1.5}
-h1,h2,h3{margin:0;font-weight:700}
-button,select,input{font:inherit;color:inherit}
-.wrap{max-width:1280px;margin:0 auto;padding:16px 18px 40px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111715;--panel:#19211e;--fg:#e6eeeb;--mute:#97a7a1;--line:#2b3733;
+  --accent:#4cc39c;--accent-soft:#183128;--hi:#f07a6f;--hi-soft:#3a1f1c;--lo:#7aa8ec;--lo-soft:#1b2639;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111715;--panel:#19211e;--fg:#e6eeeb;--mute:#97a7a1;--line:#2b3733;
+  --accent:#4cc39c;--accent-soft:#183128;--hi:#f07a6f;--hi-soft:#3a1f1c;--lo:#7aa8ec;--lo-soft:#1b2639;color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:16px;line-height:1.5}
+.app{max-width:640px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;background:var(--panel);border-inline:1px solid var(--line)}
+header{padding-block:14px 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));text-align:center}
+h1{font-size:18px;margin:0}
+.st{font-size:12px;color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:6px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));scrollbar-width:none}
+.chip{flex:none;font:inherit;font-size:13px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+.band{background:var(--accent);color:var(--panel);padding:6px 16px;font-size:15px;display:flex;justify-content:space-between;gap:8px}
+main{flex:1;overflow:auto;padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+.list{list-style:none;margin:0;padding:0}
+.list li button{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:10px;padding:14px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);cursor:pointer}
+.list li button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.list .d{flex:1;font-size:17px}
+.list .org{display:block;font-size:12px;color:var(--mute)}
+.list .v{font-family:var(--num);font-size:18px;font-variant-numeric:tabular-nums}
+.list .v.hi{color:var(--hi)}.list .v.lo{color:var(--lo)}.list .v.none{color:var(--mute);font-size:13px;font-family:var(--ui)}
+.list .chev{color:var(--mute)}
+.empty{color:var(--mute);padding:32px 16px;text-align:center}
+.pad{padding:16px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px));display:grid;gap:14px}
+.graph svg{width:100%;height:auto;display:block}
+.graph text{fill:var(--mute);font-size:11px;font-family:var(--ui)}
+.kv{display:flex;flex-wrap:wrap;gap:8px}
+.pill{display:inline-flex;padding:3px 10px;border-radius:999px;font-size:13px;background:var(--accent-soft);color:var(--accent)}
+.pill.hi{background:var(--hi-soft);color:var(--hi)}.pill.lo{background:var(--lo-soft);color:var(--lo)}
+.sumrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.sumrow .n small{color:var(--mute);font-size:12px;margin-left:4px}
+.sumrow .x{font-family:var(--num)}
+.sec{background:var(--accent-soft);color:var(--accent);font-weight:500;padding:6px 16px;font-size:14px}
+.set{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.set input{max-width:150px}
+label{font-size:13px;color:var(--mute);display:grid;gap:3px}
+input{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%;box-sizing:border-box;font-size:16px}
+button.btn{font:inherit;font-size:15px;padding:9px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--panel);cursor:pointer}
+button.btn.ghost{background:transparent;color:var(--accent)}button.btn.del{background:transparent;color:var(--hi);border-color:var(--hi)}
+.msg{font-size:13px;color:var(--mute)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav .in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+nav button{all:unset;cursor:pointer;display:grid;justify-items:center;gap:2px;padding:8px 0;font-size:12px;color:var(--mute)}
+nav button[aria-current="page"]{color:var(--accent)}
+nav button:focus-visible{outline:2px solid var(--accent)}
+nav svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fab{position:fixed;right:max(18px,calc(50% - 302px));bottom:calc(76px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border-radius:50%;border:0;background:var(--accent);color:var(--panel);font-size:28px;cursor:pointer;box-shadow:0 3px 10px #0003;z-index:6}
+.sheet{position:fixed;inset:0;background:#0006;z-index:10;display:flex;align-items:flex-end;justify-content:center}
+.sheet .box{background:var(--panel);width:100%;max-width:640px;max-height:90%;overflow:auto;border-radius:14px 14px 0 0;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:12px}
+.form{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+[hidden]{display:none!important}</style>
 
-.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.top h1{font-size:18px;letter-spacing:-.3px}
-.titlebox{display:flex;flex-direction:column;gap:2px}
-.subtitle{font-size:10.5px;color:var(--muted);font-weight:400}
-.badge{font-size:11px;padding:2px 9px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:700}
-.spacer{flex:1}
-.btn{padding:7px 13px;border:1px solid var(--line);background:var(--panel);border-radius:9px;cursor:pointer;
-  font-weight:600;font-size:12px;box-shadow:var(--shadow);text-decoration:none;color:inherit;display:inline-block}
-.btn:hover{border-color:var(--accent);color:var(--accent)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn.primary:hover{opacity:.9;color:#fff}
-.btn:disabled{opacity:.45;cursor:default}
-
-.err{background:#fee2e2;color:#991b1b;border-radius:var(--radius);padding:11px 14px;font-size:12px;
-  margin-bottom:12px;white-space:pre-wrap;word-break:break-all}
-@media (prefers-color-scheme:dark){.err{background:#3c1414;color:#fca5a5}}
-.note{background:var(--warn-bg);color:var(--warn);border-radius:var(--radius);padding:11px 14px;font-size:12px;margin-bottom:12px}
-.hidden{display:none!important}
-
-/* 오늘 카드 */
-.today{background:var(--accent);color:#fff;border-radius:var(--radius);padding:16px 18px;margin-bottom:14px}
-.today__h{font-size:12.5px;font-weight:800;opacity:.92;margin-bottom:11px}
-.today__h b{font-weight:700;opacity:.75;margin-left:5px}
-.today__g{display:grid;grid-template-columns:repeat(4,1fr)}
-@media (max-width:560px){.today__g{grid-template-columns:repeat(2,1fr);gap:12px}.today__c:nth-child(3){padding-left:0;border-left:0}}
-.today__c{display:flex;flex-direction:column;gap:2px;padding-left:16px;border-left:1px solid rgba(255,255,255,.3);min-width:0}
-.today__c:first-child{padding-left:0;border-left:0}
-.today__v{font-size:23px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
-.today__k{font-size:11px;font-weight:700;opacity:.82}
-
-/* 토큰 */
-#setup{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
-#setup input{width:100%;max-width:520px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
-.hint{color:var(--muted);font-size:11.5px;margin-top:7px}
-
-.tabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-.tab{padding:9px 15px;border:none;background:none;cursor:pointer;font-weight:700;font-size:13px;color:var(--muted);
-  border-bottom:2px solid transparent;margin-bottom:-1px}
-.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
-
-.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-.bar select,.bar input{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);min-width:130px}
-.bar .grow{flex:1;min-width:190px}
-.rowcount{font-size:11.5px;color:var(--muted);margin:8px 2px}
-
-.box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;
-  max-height:calc(100vh - 340px);box-shadow:var(--shadow)}
-table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px}
-th,td{padding:8px 11px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
-th{position:sticky;top:0;background:var(--panel);z-index:2;font-weight:700;font-size:11.5px;color:var(--muted);
-  box-shadow:inset 0 -1px 0 var(--line)}
-th.n,td.n{text-align:right;font-variant-numeric:tabular-nums}
-/* 머리글 옆 작은 보조 설명 — 「입고=검수일」처럼 뜻만 덧붙입니다. */
-.thsub{font-weight:600;font-size:10px;color:var(--muted);opacity:.7;margin-left:4px}
-td.nowrap{font-variant-numeric:tabular-nums}
-tbody tr:hover{background:var(--accent-soft)}
-td.name{white-space:normal;min-width:200px;font-weight:600}
-.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:10.5px;font-weight:700;color:#fff}
-.pill.in{background:var(--in)} .pill.out{background:var(--out)}
-.pill.move{background:var(--move)} .pill.adjust{background:var(--adjust)}
-/* 중복 의심 입고 */
-.dup{display:inline-block;padding:1px 8px;border-radius:99px;font-size:10.5px;font-weight:700;color:#fff}
-.dup.sure{background:var(--out)} .dup.susp{background:var(--move)} .dup.split{background:var(--muted)}
-td.two{white-space:normal;min-width:215px;line-height:1.45}
-td.two .sub{font-size:10.5px;color:var(--muted);word-break:break-all}
-.tabnum{margin-left:5px;font-size:10.5px;font-weight:800;color:var(--out)}
-.chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
-.chk input{min-width:0;width:auto}
-.empty{padding:40px;text-align:center;color:var(--muted)}
-a.lnk{color:var(--accent);text-decoration:none;font-weight:600}
-.zero{color:var(--out);font-weight:700}
-
-.sitefoot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:26px 0 0;padding-top:14px;
-  border-top:1px solid rgba(148,163,184,.28);font-size:11px;color:#8a93a6}
-.sitefoot b{color:#6b7280}
-</style>
-</head>
-<body>
-<div class="wrap">
-
-  <div class="top">
-    <div class="titlebox">
-      <h1>재고관리 현황</h1>
-      <div class="subtitle">사업지원본부 · 전략구매팀 · v1.1</div>
-    </div>
-    <span class="badge" id="teamBadge">미연결</span>
-    <span id="status" style="font-size:11.5px;color:var(--muted)"></span>
-    <span class="spacer"></span>
-    <a class="btn" href="https://fiti-procurement-portal.vercel.app/" title="전략구매팀 업무포털로 이동">← 업무포털</a>
-    <a class="btn" id="openApp" href="https://app.boxhero.io/team/249001/mode/2" target="_blank" rel="noopener">박스히어로 열기 ↗</a>
-    <button class="btn" id="btnSetup" type="button">토큰 설정</button>
-    <button class="btn primary" id="btnReload" type="button">새로고침</button>
-  </div>
-
-  <div id="errBox" class="err hidden"></div>
-
-  <div id="setup" class="hidden">
-    <h3 style="font-size:13px;margin-bottom:8px">박스히어로 API 토큰</h3>
-    <input type="password" id="token" placeholder="박스히어로 앱 → 설정 → 연동(Integrations) 에서 발급한 토큰" autocomplete="off">
-    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn primary" id="btnConnect" type="button">연결</button>
-      <button class="btn" id="btnForget" type="button">토큰 지우기</button>
-    </div>
-    <div class="hint">토큰은 <b>이 브라우저에만</b> 저장되고 서버로 보내지 않습니다.
-      ⚠️ 쓰기 권한이 있으니 파일·메신저로 돌리지 마세요.</div>
-  </div>
-
-  <!-- 오늘 : 창고 1회 + 거래 1회로 만든 요약 -->
-  <div class="today hidden" id="today">
-    <div class="today__h">오늘 <b id="t-date"></b></div>
-    <div class="today__g">
-      <div class="today__c"><span class="today__v" id="t-items">—</span><span class="today__k" id="t-items-k">총 품목수</span></div>
-      <div class="today__c"><span class="today__v" id="t-stock">—</span><span class="today__k">총 재고 수</span></div>
-      <div class="today__c"><span class="today__v" id="t-in">—</span><span class="today__k">입고</span></div>
-      <div class="today__c"><span class="today__v" id="t-out">—</span><span class="today__k">출고</span></div>
-    </div>
-  </div>
-
-  <div class="tabs">
-    <button class="tab on" data-tab="tx" type="button">입출고 내역</button>
-    <button class="tab" data-tab="loc" type="button">창고별 집계</button>
-    <button class="tab" data-tab="dup" type="button">중복 의심 입고<span class="tabnum" id="dupNum"></span></button>
-  </div>
-
-  <!-- 입출고 내역 : 목록 API 1회 -->
-  <section id="tab-tx">
-    <div class="bar">
-      <select id="txType">
-        <option value="">전체 유형</option>
-        <option value="in">입고</option>
-        <option value="out">출고</option>
-        <option value="move">이동</option>
-        <option value="adjust">조정</option>
-      </select>
-      <select id="txDays">
-        <option value="1">오늘</option>
-        <option value="7" selected>최근 7일</option>
-        <option value="30">최근 30일</option>
-        <option value="0">전체(최근 100건)</option>
-      </select>
-      <input class="grow" id="txQ" placeholder="창고 · 담당자 · 거래처 · 메모 검색">
-      <button class="btn" id="btnCsvTx" type="button">CSV</button>
-    </div>
-    <div class="rowcount" id="txCount"></div>
-    <div class="box"><table id="tblTx"><thead></thead><tbody></tbody></table></div>
-    <p class="hint"><b>입고</b>는 검수조서가 작성되면 잡힙니다 — 그 줄의 <b>일시</b>가 검수일자, <b>담당자</b>가 검수자입니다. 「유형」을 <b>입고</b>로 두면 검수 건만 봅니다.<br>품목명은 박스히어로가 목록에 주지 않습니다. 줄의 <b>[보기]</b>를 누르면 박스히어로에서 그 건이 열립니다.</p>
-  </section>
-
-  <!-- 창고별 집계 : 창고 API 1회 -->
-  <section id="tab-loc" class="hidden">
-    <div class="rowcount" id="locCount"></div>
-    <div class="box"><table id="tblLoc"><thead></thead><tbody></tbody></table></div>
-  </section>
-
-  <!-- 중복 의심 입고 : 이미 받아 둔 거래 목록으로 찾습니다 (API 추가 호출 없음) -->
-  <section id="tab-dup" class="hidden">
-    <div class="bar">
-      <select id="dupWin">
-        <option value="24">24시간 이내</option>
-        <option value="72" selected>사흘 이내</option>
-        <option value="168">일주일 이내</option>
-      </select>
-      <label class="chk"><input type="checkbox" id="dupSplit"> 분할입고(정상)도 보기</label>
-      <span class="spacer"></span>
-      <button class="btn" id="btnCsvDup" type="button">CSV</button>
-    </div>
-    <div class="rowcount" id="dupCount"></div>
-    <div class="box"><table id="tblDup"><thead></thead><tbody></tbody></table></div>
-    <p class="hint"><b>입고만</b> 봅니다. <b>같은 창고 · 같은 품목수 · 같은 수량</b>이 정해진 시간 안에 두 번 잡히면 묶어서 보여 줍니다.<br>
-      <span class="dup sure">확실</span> 검수번호(qcNo)가 같습니다 — 같은 검수 건이 두 번 들어왔습니다.
-      <span class="dup susp">의심</span> 한쪽은 검수연동이고 다른 쪽은 사람이 손으로 넣었습니다.
-      <span class="dup split">분할</span> 같은 구매건의 검수 차수가 달라 <b>정상</b>입니다 (기본 숨김).<br>
-      <b>최근 100건</b> 안에서만 찾습니다. 품목명은 목록 API 가 주지 않아 <b>품목수 · 수량</b>으로 맞춰 봅니다 —
-      짝이 맞아도 실제 품목은 <b>[보기]</b>로 박스히어로에서 확인하세요. <b>지우지는 않습니다.</b></p>
-  </section>
-
-  <footer class="sitefoot">
-    <span><b>(재)FITI시험연구원</b> 사업지원본부 · 전략구매팀</span>
-    <span style="opacity:.5">·</span><span>재고관리 현황 v1.1</span>
-    <span style="opacity:.5">·</span><span>문의 : 전략구매팀 (내선 8124)</span>
-  </footer>
+</head><body>
+<div class="login" id="login" hidden><form class="lg" id="lgForm">
+  <img src="/apple-touch-icon.png" alt="" width="72" height="72" style="border-radius:18px">
+  <h2>건강검진 기록</h2>
+  <p class="msg">본인 기록입니다. 비밀번호를 넣어 주세요.</p>
+  <input type="password" id="lgPw" placeholder="비밀번호" autocomplete="current-password">
+  <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="lgKeep" checked style="width:auto">이 기기에서 로그인 유지</label>
+  <button class="btn" type="submit">로그인</button>
+  <span class="msg" id="lgMsg"></span>
+</form></div>
+<div class="app">
+  <header><h1 id="ttl">기록</h1><div class="st" id="status">기록을 불러오는 중…</div></header>
+  <div class="chips" id="chips"></div>
+  <div class="band" id="band"></div>
+  <main id="main"></main>
 </div>
+<button class="fab" id="fab" aria-label="검진 결과 입력">+</button>
+<nav><div class="in">
+  <button data-tab="rec" aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>기록</button>
+  <button data-tab="graph"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/></svg>그래프</button>
+  <button data-tab="sum"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>요약</button>
+  <button data-act="add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>입력</button>
+  <button data-tab="set"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>설정</button>
+</div></nav>
+<div class="sheet" id="sheet" hidden><div class="box" id="sheetBox"></div></div>
 
 <script>
-"use strict";
-/* =========================================================================
-   재고관리 현황 — 가벼운 판
-   첫 화면은 API 2번만 씁니다 : /v1/locations + /v1/transactions
-   품목 전체(/v1/items)는 수십 번 호출해야 하므로 버튼을 누를 때만 받습니다.
-   ========================================================================= */
-const BASE = "https://rest.boxhero-app.com";
-const APP  = "https://app.boxhero.io/team/249001/mode/2";
-const LS   = "boxhero.token";
-const TYPE_KO = { in:"입고", out:"출고", move:"이동", adjust:"조정" };
+const ITEMS=[["WT","체중","kg",null,null],["BF","체지방률","%",10,20],["AST","AST(SGOT)","IU/L",0,40],["ALT","ALT(SGPT)","IU/L",0,40],
+["GGT","감마지피티","IU/L",0,56],["TC","총콜레스테롤","mg/dL",null,199],["TG","중성지방","mg/dL",null,149],
+["HDL","HDL 콜레스테롤","mg/dL",40,null],["LDL","LDL 콜레스테롤","mg/dL",null,129],["GLU","공복혈당","mg/dL",70,99],
+["UA","요산","mg/dL",2.8,7.7],["HBA1C","당화혈색소","%",4,5.6]];
+const $=id=>document.getElementById(id);
+let rows=[],settings={item:"GGT",next:""},col=null,tab="rec";
+try{const s=localStorage.getItem("hc.item");if(s)settings.item=s;}catch(e){}
+const it=id=>ITEMS.find(i=>i[0]===id)||ITEMS[0];
+function judge(id,v){const i=it(id);if(v==null)return"none";if(i[3]!=null&&v<i[3])return"lo";if(i[4]!=null&&v>i[4])return"hi";return"ok";}
+const fmt=v=>v==null?"":(+v).toLocaleString("ko-KR",{maximumFractionDigits:2});
+const WD="일월화수목금토";
+const dlabel=d=>{const t=new Date(d+"T00:00");return`${d.replaceAll("-",".")} (${WD[t.getDay()]})`;};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const sorted=()=>rows.slice().sort((a,b)=>b.dt.localeCompare(a.dt));
 
-const $ = s => document.querySelector(s);
-const $$ = s => [...document.querySelectorAll(s)];
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const nf  = n => (Number(n)||0).toLocaleString("ko-KR");
-const setStatus = t => { $("#status").textContent = t || ""; };
-const showErr = m => { const e=$("#errBox"); e.textContent = m; e.classList.remove("hidden"); };
-const clearErr = () => $("#errBox").classList.add("hidden");
+function chips(){const show=tab==="rec"||tab==="graph";$("chips").hidden=!show;$("band").hidden=!show;if(!show)return;
+  $("chips").innerHTML=ITEMS.map(([id,n])=>`<button class="chip" data-id="${id}" aria-pressed="${id===settings.item}">${n}</button>`).join("");
+  const i=it(settings.item);$("band").innerHTML=`<span>${i[1]} (${i[2]})</span><span>기준 ${i[3]??""}${i[3]!=null||i[4]!=null?"~":"없음"}${i[4]??""}</span>`;}
+$("chips").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;settings.item=b.dataset.id;try{localStorage.setItem("hc.item",b.dataset.id)}catch(e){}render();};
 
-const S = { token:"", proxy:false, locations:[], txs:[] };
+function vRec(){const ds=sorted();if(!ds.length)return`<p class="empty">아직 기록이 없습니다.<br>오른쪽 아래 <b>+</b> 로 첫 검진을 넣어 주세요.</p>`;
+  return`<ul class="list">${ds.map(r=>{const v=r.v?.[settings.item];const j=judge(settings.item,v);
+    return`<li><button data-dt="${r.dt}"><span class="d">${dlabel(r.dt)}<span class="org">${esc(r.org)}</span></span><span class="v ${j}">${v==null?"값 없음":fmt(v)}</span><span class="chev">›</span></button></li>`;}).join("")}</ul>`;}
 
-function token(){ try { return localStorage.getItem(LS) || ""; } catch(e){ return ""; } }
+let gRange="all",gSel=-1;
+const ABOUT={WT:"체중은 건강검진 때 잰 몸무게입니다. 혈압 · 혈당 · 간수치와 함께 보면 변화의 원인을 짐작하기 쉽습니다.",
+BF:"체지방률은 몸무게 가운데 지방이 차지하는 비율입니다.",
+AST:"AST는 간 · 심장 · 근육 세포에 있는 효소로, 이 조직이 손상되면 혈액 속 수치가 올라갑니다.",
+ALT:"ALT는 주로 간세포에 있는 효소라 간 손상을 가장 직접 보여 주는 수치입니다.",
+GGT:"감마지피티는 간과 담도에서 나오는 효소로, 음주 · 지방간 · 약물의 영향을 잘 받습니다.",
+TC:"총콜레스테롤은 혈액 속 콜레스테롤 전체 양입니다. LDL · HDL 과 함께 봐야 뜻이 분명해집니다.",
+TG:"중성지방은 쓰고 남은 열량이 저장되는 지방입니다. 식사 · 음주 직후에는 높게 나올 수 있습니다.",
+HDL:"HDL은 혈관의 콜레스테롤을 간으로 되돌려 보내는 「좋은」 콜레스테롤이라 높을수록 좋습니다.",
+LDL:"LDL은 혈관 벽에 쌓이기 쉬운 「나쁜」 콜레스테롤이라 낮을수록 좋습니다.",
+GLU:"공복혈당은 8시간 이상 굶은 뒤 잰 혈액 속 포도당 농도입니다. 100~125 mg/dL 이면 공복혈당장애, 126 이상이면 당뇨를 의심합니다.",
+UA:"요산은 퓨린이 분해되고 남는 물질로, 높으면 통풍의 원인이 됩니다.",
+HBA1C:"당화혈색소는 최근 2~3개월의 평균 혈당을 보여 줍니다. 5.7~6.4% 는 당뇨 전단계, 6.5% 이상은 당뇨를 의심합니다."};
+function vGraph(){const i=it(settings.item);let p=rows.filter(r=>r.v?.[i[0]]!=null).sort((a,b)=>a.dt.localeCompare(b.dt));
+  const seg=[["1y","1년"],["3y","3년"],["5y","5년"],["10y","10년"],["all","전체"]];
+  const segH=`<div class="seg">${seg.map(([k,n])=>`<button data-rg="${k}" aria-pressed="${gRange===k}">${n}</button>`).join("")}</div>`;
+  if(gRange!=="all"&&p.length){const last=new Date(p[p.length-1].dt);last.setFullYear(last.getFullYear()-{"1y":1,"3y":3,"5y":5,"10y":10}[gRange]);const cut=last.toISOString().slice(0,10);p=p.filter(r=>r.dt>cut);}
+  const about=`<div class="ahAbout"><h3>${i[1]}에 관하여</h3><p>${ABOUT[i[0]]||""}${i[3]!=null||i[4]!=null?`<br><span class="msg">참고 범위 ${i[3]??""}~${i[4]??""} ${i[2]}</span>`:""}</p></div>`;
+  if(!p.length)return`<div class="pad ah">${segH}<p class="empty">이 기간에 ${i[1]} 기록이 없습니다.</p></div>${about}`;
+  if(gSel<0||gSel>=p.length)gSel=p.length-1;
+  const vals=p.map(r=>r.v[i[0]]),sel=p[gSel],sv=sel.v[i[0]],sj=judge(i[0],sv);
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  const W=600,H=360,L=4,R=56,T=10,B=34;
+  const top=Math.max(...vals,i[4]||0),raw=top/3,mag=Math.pow(10,Math.floor(Math.log10(raw||1))),step=[1,2,2.5,5,10].map(m=>m*mag).find(s=>s>=raw),mx=step*3;
+  const n=p.length,X=k=>n===1?(L+W-R)/2:L+20+k*(W-L-R-40)/(n-1),Y=v=>T+(mx-v)*(H-T-B)/mx;
+  const xt=Math.max(1,Math.ceil(n/4));
+  const xs=p.map((r,k)=>k).filter(k=>k%xt===0);
+  return`<div class="pad ah">${segH}
+  <div class="ahHead"><div><span class="ahVal">${fmt(sv)}</span><span class="ahUnit">${i[2]}</span></div>
+    <div class="ahDate">${sel.dt.slice(0,4)}년 ${+sel.dt.slice(5,7)}월 ${+sel.dt.slice(8,10)}일 (${WD[new Date(sel.dt+"T00:00").getDay()]})${sj==="hi"?' · <b style="color:var(--hi)">기준보다 높음</b>':sj==="lo"?' · <b style="color:var(--lo)">기준보다 낮음</b>':""}</div></div>
+  <div class="graph"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${i[1]} 추이">
+  <rect x="${L}" y="${T}" width="${W-L-R}" height="${H-T-B}" fill="none" stroke="var(--line)"/>
+  ${[1,2].map(k=>`<line x1="${L}" x2="${W-R}" y1="${Y(step*k)}" y2="${Y(step*k)}" stroke="var(--line)"/>`).join("")}
+  ${[0,1,2,3].map(k=>`<text x="${W-R+8}" y="${Y(step*k)+5}" class="ax">${fmt(step*k)}</text>`).join("")}
+  ${xs.map(k=>`<line x1="${X(k)}" x2="${X(k)}" y1="${T}" y2="${H-B+24}" stroke="var(--line)" stroke-dasharray="3 3"/><text x="${X(k)+4}" y="${H-10}" class="ax">${p[k].dt.slice(0,4)}.${p[k].dt.slice(5,7)}</text>`).join("")}
+  ${p.map((r,k)=>{const v=r.v[i[0]];return`<g data-k="${k}" style="cursor:pointer"><rect x="${X(k)-14}" y="${T}" width="28" height="${H-T-B}" fill="transparent"/>${k===gSel?`<line x1="${X(k)}" x2="${X(k)}" y1="${T}" y2="${H-B}" stroke="var(--hi)" opacity=".35"/>`:""}<circle cx="${X(k)}" cy="${Y(v)}" r="${k===gSel?9:7}" fill="#e5484d"/></g>`;}).join("")}
+  </svg></div>
+  <div class="ahAvg"><span>${gRange==="all"?"전체":seg.find(s=>s[0]===gRange)[1]} 평균</span><b>${fmt(Math.round(avg*10)/10)}${i[2]}</b></div>
+  <div class="ahAvg"><span>최저 · 최고</span><b>${fmt(Math.min(...vals))} · ${fmt(Math.max(...vals))}${i[2]}</b></div>
+  </div>${about}`;}
+document.addEventListener("click",e=>{const s=e.target.closest("[data-rg]");if(s){gRange=s.dataset.rg;gSel=-1;render();return;}
+  const g=e.target.closest("svg g[data-k]");if(g){gSel=+g.dataset.k;render();}});
+function vSum(){const ds=sorted();if(!ds.length)return`<p class="empty">기록이 없습니다.</p>`;const l=ds[0];
+  let c={hi:0,lo:0,ok:0};ITEMS.forEach(([id])=>{const j=judge(id,l.v?.[id]);if(c[j]!=null)c[j]++;});
+  const next=settings.next?`<p class="msg">다음 검진 예정 <b>${dlabel(settings.next)}</b></p>`:"";
+  return`<div class="pad"><div><b>${dlabel(l.dt)}</b> <span class="msg">${esc(l.org)} · 총 ${ds.length}회</span></div>
+  <div class="kv"><span class="pill">정상 ${c.ok}</span>${c.hi?`<span class="pill hi">높음 ${c.hi}</span>`:""}${c.lo?`<span class="pill lo">낮음 ${c.lo}</span>`:""}</div>${next}
+  <div>${ITEMS.map(([id,n,u])=>{const v=l.v?.[id];if(v==null)return"";const prev=ds.slice(1).find(r=>r.v?.[id]!=null);const d=prev?v-prev.v[id]:null;const j=judge(id,v);
+    return`<div class="sumrow"><span class="n">${n}<small>${u}</small></span><span class="x" style="color:var(--mute);font-size:13px">${d==null?"":(d>0?"▲":d<0?"▼":"–")+" "+fmt(Math.abs(d))}</span><span class="pill ${j==="ok"?"":j}">${fmt(v)}</span></div>`;}).join("")}</div></div>`;}
 
-/* 한국시간 기준 날짜 */
-function kst(iso){
-  const d = new Date(new Date(iso).getTime() + 9*3600*1000);
-  const p = n => String(n).padStart(2,"0");
-  return { date:`${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`,
-           time:`${p(d.getUTCHours())}:${p(d.getUTCMinutes())}` };
-}
-const today = () => kst(new Date().toISOString()).date;
-function shift(ymd, days){
-  const d = new Date(ymd + "T00:00:00Z"); d.setUTCDate(d.getUTCDate()+days);
-  const p = n => String(n).padStart(2,"0");
-  return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`;
-}
+function vSet(){return`<div class="sec">기본 설정</div>
+  <div class="set"><span>처음 보여 줄 항목</span><span>${it(settings.item)[1]}</span></div>
+  <div class="set"><span>다음 검진 예정일</span><input type="date" id="nextDt" value="${settings.next||""}"></div>
+  <div class="sec">자료 가져오기</div>
+  <div class="pad"><label>예전 화면에서 내보낸 CSV (검진일, 기관, 항목ID, 결과)<input type="file" id="csv" accept=".csv,text/csv"></label>
+  <span class="msg" id="setMsg">기록은 본인만 볼 수 있게 저장되고, PC · 폰 어디서 열어도 같습니다.</span></div>`;}
 
-/* 서버 프록시(api/boxhero)가 살아 있으면 그걸 씁니다 — 토큰이 서버에만 있어서
-   팀원은 아무것도 넣을 필요가 없습니다. 프록시가 없으면 각자 토큰으로 직접 호출합니다. */
-async function api(path){
-  let url, opt;
-  if (S.proxy) {
-    const p = path.replace(/^\//, "");
-    const i = p.indexOf("?");
-    const qs = new URLSearchParams(i < 0 ? "" : p.slice(i + 1));
-    qs.set("path", i < 0 ? p : p.slice(0, i));
-    url = "/api/boxhero?" + qs;
-    opt = {};
-  } else {
-    url = BASE + path;
-    opt = { headers:{ Authorization:"Bearer " + S.token } };
-  }
+function render(){chips();$("ttl").textContent={rec:"기록",graph:"그래프",sum:"요약",set:"설정"}[tab];
+  $("main").innerHTML=tab==="rec"?vRec():tab==="graph"?vGraph():tab==="sum"?vSum():vSet();
+  document.querySelectorAll("nav button").forEach(b=>b.toggleAttribute("aria-current",b.dataset.tab===tab)||b.dataset.tab===tab&&b.setAttribute("aria-current","page"));
+  $("fab").hidden=tab==="set";
+  if(tab==="set"){$("nextDt").onchange=e=>saveSettings({next:e.target.value});$("csv").onchange=importCsv;}}
+document.querySelector("nav").onclick=e=>{if(e.target.closest("button[data-act=add]")){openSheet(null);return;}const b=e.target.closest("button[data-tab]");if(!b)return;tab=b.dataset.tab;render();$("main").scrollTop=0;};
+$("main").addEventListener("click",e=>{const b=e.target.closest("button[data-dt]");if(b)openSheet(rows.find(r=>r.dt===b.dataset.dt));});
+$("fab").onclick=()=>openSheet(null);
+$("sheet").onclick=e=>{if(e.target.id==="sheet")$("sheet").hidden=true;};
 
-  const r = await fetch(url, opt);
-  if (r.status === 401) throw new Error("토큰이 올바르지 않습니다. [토큰 설정]에서 다시 넣어 주세요.");
-  if (r.status === 429) throw new Error("박스히어로 요청 제한(429)입니다. 잠시 후 새로고침하세요.");
-  if (!r.ok) throw new Error("박스히어로 API " + r.status + " (" + path + ")");
-  return r.json();
-}
-
-/* 프록시가 배포돼 있고 토큰까지 들어 있는지 한 번만 확인합니다. */
-async function detectProxy(){
-  if (location.protocol === "file:") return false;
-  try {
-    const r = await fetch("/api/boxhero?path=v1/teams/linked");
-    if (!r.ok) return false;
-    const j = await r.json();
-    return !!(j && j.id);
-  } catch(e){ return false; }
-}
-
-/* ---------------- 첫 화면 : 2번만 ---------------- */
-async function load(){
-  clearErr();
-  $("#btnReload").disabled = true;
-  setStatus("불러오는 중…");
-  try {
-    const team = await api("/v1/teams/linked");
-    $("#teamBadge").textContent = team.name || "연결됨";
-    $("#setup").classList.add("hidden");
-
-    const [loc, tx] = await Promise.all([
-      api("/v1/locations?limit=100"),
-      api("/v1/transactions?limit=100")
-    ]);
-    S.locations = (loc.items || []).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"ko",{numeric:true}));
-    S.txs = tx.items || [];
-
-    renderToday();
-    renderTx();
-    renderLoc();
-    renderDup();
-    setStatus("거래 " + nf(S.txs.length) + "건 · 창고 " + nf(S.locations.length) + "곳 · " + new Date().toLocaleTimeString("ko-KR") + " 기준");
-
-    // 화면을 띄운 뒤 총 품목수를 뒤에서 셉니다 (기다리지 않습니다)
-    countItems();
-  } catch(e){
-    showErr(e.message);
-    setStatus("");
-    $("#setup").classList.remove("hidden");
-  } finally {
-    $("#btnReload").disabled = false;
-  }
-}
-
-function renderToday(){
-  const t = today();
-  const rows = S.txs.filter(x => kst(x.transaction_time).date === t);
-  const stock = S.locations.reduce((s,l)=> s + (Number(l.quantity)||0), 0);
-
-  $("#t-date").textContent = parseInt(t.slice(5,7),10) + "월 " + parseInt(t.slice(8,10),10) + "일";
-  $("#t-stock").textContent = nf(stock);
-  $("#t-in").textContent  = nf(rows.filter(x=>x.type==="in").length);
-  $("#t-out").textContent = nf(rows.filter(x=>x.type==="out").length);
-  $("#today").classList.remove("hidden");
+function openSheet(r){
+  $("sheetBox").innerHTML=`<div class="row" style="justify-content:space-between"><b>${r?dlabel(r.dt)+" 고치기":"검진 결과 입력"}</b><button class="btn ghost" id="shClose">닫기</button></div>
+  <div class="form"><label>검진일 *<input type="date" id="dt" value="${r?.dt||""}" ${r?"disabled":""}></label><label>검진기관<input id="org" value="${esc(r?.org)}" placeholder="예: 아산병원"></label>
+  ${ITEMS.map(([id,n,u])=>`<label>${n} (${u})<input type="number" step="any" inputmode="decimal" id="v_${id}" value="${r?.v?.[id]??""}"></label>`).join("")}</div>
+  <div class="row"><button class="btn" id="shSave">저장</button>${r?`<button class="btn del" id="shDel">이 회차 지우기</button>`:""}<span class="msg" id="shMsg"></span></div>`;
+  $("sheet").hidden=false;$("shClose").onclick=()=>$("sheet").hidden=true;
+  $("shSave").onclick=async()=>{const dt=$("dt").value;if(!dt)return $("shMsg").textContent="검진일을 넣어 주세요.";
+    const v={};ITEMS.forEach(([id])=>{const x=$("v_"+id).value;if(x!=="")v[id]=+x;});
+    if(!Object.keys(v).length)return $("shMsg").textContent="입력한 결과가 없습니다.";
+    try{await col.doc(dt).set({dt,org:$("org").value.trim(),v});$("sheet").hidden=true;}catch(e){$("shMsg").textContent="저장하지 못했습니다: "+(e.message||e.code);}};
+  if(r){let armed=false;$("shDel").onclick=async()=>{if(!armed){armed=true;$("shDel").textContent="한 번 더 누르면 지웁니다";return;}
+    try{await col.doc(r.dt).delete();$("sheet").hidden=true;}catch(e){$("shMsg").textContent="지우지 못했습니다: "+(e.message||e.code);}};}
 }
 
-/* ---------------- 입출고 내역 ---------------- */
-function filteredTx(){
-  const type = $("#txType").value;
-  const days = Number($("#txDays").value);
-  const q = $("#txQ").value.trim().toLowerCase();
-  const from = days ? shift(today(), -(days-1)) : "";
+async function saveSettings(p){settings={...settings,...p};try{await col?.doc("_settings").set({next:settings.next||""});}catch(e){}}
+async function importCsv(e){const f=e.target.files[0];if(!f)return;const txt=(await f.text()).replace(/^﻿/,"");const by={};
+  txt.split(/\r?\n/).forEach(l=>{const c=l.split(",");if(c.length<4||!/^\d{4}-\d{2}-\d{2}$/.test(c[0]))return;const val=parseFloat(c[c.length-1]);if(isNaN(val))return;
+    (by[c[0]]??={org:c.slice(1,c.length-2).join(",").trim(),v:{}}).v[c[c.length-2].trim()]=val;});
+  const ks=Object.keys(by);if(!ks.length)return $("setMsg").textContent="CSV 에서 읽을 줄이 없습니다.";
+  if(!confirm(`지금 기록 ${rows.length}회차를 지우고 CSV 의 ${ks.length}회차로 덮어씁니다. 계속할까요?`))return;
+  try{const o={};ks.forEach(k=>o[k]={dt:k,org:by[k].org||"",v:by[k].v});await replaceAll(o);
+    $("setMsg").textContent=`CSV 의 ${ks.length}회차로 덮어썼습니다.`;}catch(err){$("setMsg").textContent="가져오지 못했습니다: "+(err.message||err.code);}}
 
-  return S.txs.filter(t => {
-    if (type && t.type !== type) return false;
-    if (from && kst(t.transaction_time).date < from) return false;
-    if (q) {
-      const hay = [t.to_location?.name, t.from_location?.name, t.created_by?.name, t.partner?.name, t.memo]
-        .filter(Boolean).join(" ").toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-}
-
-function renderTx(){
-  const list = filteredTx();
-  /* 입고는 검수조서가 작성돼야 잡힙니다. 그래서 입고 줄의
-     일시 = 검수일자, 담당자 = 검수자 로 읽으면 됩니다.
-     모니터링 목적이라 연도까지 보이게 하고 머리글에도 그렇게 적습니다. */
-  $("#tblTx thead").innerHTML =
-    "<tr><th>일시 <span class='thsub'>입고=검수일</span></th><th>유형</th><th class='n'>품목</th><th class='n'>수량</th>" +
-    "<th>창고</th><th>거래처</th><th>담당자 <span class='thsub'>입고=검수자</span></th><th>메모</th><th></th></tr>";
-
-  $("#tblTx tbody").innerHTML = list.length ? list.map(t => {
-    const w = kst(t.transaction_time);
-    const place = t.type === "out" ? (t.from_location?.name || t.to_location?.name) : (t.to_location?.name || t.from_location?.name);
-    return "<tr>" +
-      "<td class='nowrap'>" + w.date.replace(/-/g,".") + " " + w.time + "</td>" +
-      "<td><span class='pill " + t.type + "'>" + (TYPE_KO[t.type]||t.type) + "</span></td>" +
-      "<td class='n'>" + nf(t.count_of_items) + "종</td>" +
-      "<td class='n'>" + nf(Math.abs(Number(t.total_quantity)||0)) + "</td>" +
-      "<td>" + esc(place || "") + "</td>" +
-      "<td>" + esc(t.partner?.name || "") + "</td>" +
-      "<td>" + esc(t.created_by?.name || "") + "</td>" +
-      "<td>" + esc(t.memo || "") + "</td>" +
-      "<td><a class='lnk' href='" + esc(t.url || APP) + "' target='_blank' rel='noopener'>보기↗</a></td>" +
-      "</tr>";
-  }).join("") : "<tr><td class='empty' colspan='9'>해당 기간에 입출고가 없습니다.</td></tr>";
-
-  const inQ  = list.filter(t=>t.type==="in").reduce((s,t)=>s+Math.abs(Number(t.total_quantity)||0),0);
-  const outQ = list.filter(t=>t.type==="out").reduce((s,t)=>s+Math.abs(Number(t.total_quantity)||0),0);
-  $("#txCount").innerHTML = "표시 <b>" + nf(list.length) + "</b>건 · 입고 <b style='color:var(--in)'>+" + nf(inQ) +
-    "</b> · 출고 <b style='color:var(--out)'>-" + nf(outQ) + "</b>";
-}
-
-/* ---------------- 창고별 집계 ---------------- */
-function renderLoc(){
-  $("#tblLoc thead").innerHTML = "<tr><th>창고</th><th class='n'>재고 수량</th><th>메모</th></tr>";
-  $("#tblLoc tbody").innerHTML = S.locations.length ? S.locations.map(l =>
-    "<tr><td class='name'>" + esc(l.name) + "</td>" +
-    "<td class='n'>" + ((Number(l.quantity)||0) === 0 ? "<span class='zero'>0</span>" : nf(l.quantity)) + "</td>" +
-    "<td>" + esc(l.memo || "") + "</td></tr>").join("")
-    : "<tr><td class='empty' colspan='3'>창고가 없습니다.</td></tr>";
-  $("#locCount").innerHTML = "창고 <b>" + nf(S.locations.length) + "</b>곳 · 총 재고 <b>" +
-    nf(S.locations.reduce((s,l)=>s+(Number(l.quantity)||0),0)) + "</b>";
-}
-
-/* ---------------- 중복 의심 입고 ----------------
-   검수연동이 아침에 자동으로 넣은 건을 현장에서 모르고 오후에 또 넣어
-   재고가 부풀던 일이 있었습니다(2026-10-08 갈색메디아병).
-   이미 받아 둔 S.txs 만 보므로 API 를 더 쓰지 않습니다.
-   품목명은 목록 API 가 주지 않아 창고·품목수·수량으로 맞춰 봅니다. */
-const DUP_KO = { sure:"확실", susp:"의심", split:"분할" };
-
-/* 메모에서 구매번호·검수번호를 꺼냅니다 — 검수연동이 넣은 건에는 반드시 붙습니다.
-   예) 검수연동 / prNo=CS2026092300005 qcNo=S202609160005-1
-   검수번호 끝의 -1 · -2 는 나눠 검수한 차수라, 차수가 다르면 정상 분할입고입니다. */
-function memoKeys(m){
-  const s = String(m || "");
-  const pr = (s.match(/prNo\s*=\s*([A-Za-z0-9-]+)/i) || [])[1] || "";
-  const qc = (s.match(/qcNo\s*=\s*([A-Za-z0-9-]+)/i) || [])[1] || "";
-  return { pr, qc, linked: /검수연동/.test(s) || !!pr || !!qc };
-}
-
-function dupPairs(){
-  const winH = Number($("#dupWin")?.value) || 72;
-  const bucket = new Map();
-  S.txs.filter(t => t.type === "in").forEach(t => {
-    const k = [t.to_location?.name || "", t.count_of_items, Math.abs(Number(t.total_quantity) || 0)].join("|");
-    if (!bucket.has(k)) bucket.set(k, []);
-    bucket.get(k).push(t);
-  });
-
-  const pairs = [];
-  bucket.forEach(list => {
-    if (list.length < 2) return;
-    list.sort((a,b) => new Date(a.transaction_time) - new Date(b.transaction_time));
-    for (let i = 0; i < list.length; i++){
-      for (let j = i + 1; j < list.length; j++){
-        const a = list[i], b = list[j];
-        const gapH = (new Date(b.transaction_time) - new Date(a.transaction_time)) / 3600000;
-        if (!(gapH <= winH)) break;          // 시간순이라 더 볼 필요 없음
-        const ka = memoKeys(a.memo), kb = memoKeys(b.memo);
-        let kind, how;
-        if (ka.qc && kb.qc){
-          if (ka.qc === kb.qc)                       { kind = "sure";  how = "검수번호가 같습니다"; }
-          else if (ka.pr && kb.pr && ka.pr !== kb.pr){ kind = "other"; how = "구매건이 다릅니다"; }
-          else                                       { kind = "split"; how = "같은 구매건의 다른 검수 차수"; }
-        } else if (ka.linked !== kb.linked)          { kind = "susp";  how = "한쪽은 검수연동, 한쪽은 수기"; }
-        else                                         { kind = "susp";  how = "둘 다 수기"; }
-        pairs.push({ a, b, gapH, kind, how });
-      }
-    }
-  });
-  return pairs.sort((x,y) => new Date(y.b.transaction_time) - new Date(x.b.transaction_time));
-}
-
-function gapKo(h){
-  if (h < 1) return Math.round(h * 60) + "분";
-  if (h < 48) return (Math.round(h * 10) / 10) + "시간";
-  return (Math.round(h / 24 * 10) / 10) + "일";
-}
-
-function dupList(){
-  const showSplit = !!$("#dupSplit")?.checked;
-  return dupPairs().filter(p => p.kind !== "other" && (showSplit || p.kind !== "split"));
-}
-
-function renderDup(){
-  const list = dupList();
-
-  $("#tblDup thead").innerHTML =
-    "<tr><th>판정</th><th>창고</th><th class='n'>품목</th><th class='n'>수량</th>" +
-    "<th>먼저 들어온 건</th><th>나중 들어온 건</th><th>간격</th><th></th></tr>";
-
-  const side = t => {
-    const w = kst(t.transaction_time);
-    return "<div>" + w.date.replace(/-/g,".") + " " + w.time + " · <b>" + esc(t.created_by?.name || "—") + "</b></div>" +
-           "<div class='sub'>" + (t.memo ? esc(t.memo) : "메모 없음") + "</div>";
-  };
-
-  $("#tblDup tbody").innerHTML = list.length ? list.map(p =>
-    "<tr>" +
-      "<td><span class='dup " + p.kind + "'>" + DUP_KO[p.kind] + "</span>" +
-        "<div class='sub' style='font-size:10.5px;color:var(--muted);margin-top:3px'>" + esc(p.how) + "</div></td>" +
-      "<td>" + esc(p.b.to_location?.name || "") + "</td>" +
-      "<td class='n'>" + nf(p.b.count_of_items) + "종</td>" +
-      "<td class='n'>" + nf(Math.abs(Number(p.b.total_quantity) || 0)) + "</td>" +
-      "<td class='two'>" + side(p.a) + "</td>" +
-      "<td class='two'>" + side(p.b) + "</td>" +
-      "<td class='nowrap'>" + gapKo(p.gapH) + "</td>" +
-      "<td class='nowrap'>" +
-        "<a class='lnk' href='" + esc(p.a.url || APP) + "' target='_blank' rel='noopener'>먼저↗</a> " +
-        "<a class='lnk' href='" + esc(p.b.url || APP) + "' target='_blank' rel='noopener'>나중↗</a>" +
-      "</td>" +
-    "</tr>").join("")
-    : "<tr><td class='empty' colspan='8'>짚이는 중복이 없습니다.</td></tr>";
-
-  const sure = list.filter(p => p.kind === "sure").length;
-  const susp = list.filter(p => p.kind === "susp").length;
-  const split = list.filter(p => p.kind === "split").length;
-  $("#dupCount").innerHTML = "입고 <b>" + nf(S.txs.filter(t => t.type === "in").length) + "</b>건 중 · " +
-    "확실 <b style='color:var(--out)'>" + nf(sure) + "</b> · " +
-    "의심 <b style='color:var(--move)'>" + nf(susp) + "</b>" +
-    (split ? " · 분할(정상) <b>" + nf(split) + "</b>" : "");
-
-  /* 탭 옆 숫자는 손봐야 하는 것만 — 분할(정상)은 세지 않습니다. */
-  const need = dupPairs().filter(p => p.kind === "sure" || p.kind === "susp").length;
-  $("#dupNum").textContent = need ? need : "";
-}
-
-$("#dupWin").addEventListener("change", renderDup);
-$("#dupSplit").addEventListener("change", renderDup);
-$("#btnCsvDup").addEventListener("click", ()=>{
-  const rows = [["판정","근거","창고","품목수","수량",
-    "먼저_일시","먼저_담당자","먼저_메모","나중_일시","나중_담당자","나중_메모","간격"]];
-  dupList().forEach(p => {
-    const wa = kst(p.a.transaction_time), wb = kst(p.b.transaction_time);
-    rows.push([DUP_KO[p.kind], p.how, p.b.to_location?.name || "",
-      p.b.count_of_items, Math.abs(Number(p.b.total_quantity) || 0),
-      wa.date + " " + wa.time, p.a.created_by?.name || "", p.a.memo || "",
-      wb.date + " " + wb.time, p.b.created_by?.name || "", p.b.memo || "", gapKo(p.gapH)]);
-  });
-  csv("재고관리_중복의심입고_" + stamp() + ".csv", rows);
-});
-/* ---------------- 총 품목수 : 화면을 먼저 띄운 뒤 뒤에서 셉니다 ----------------
-   박스히어로 API 에는 "총 개수" 를 주는 곳이 없어서 100개씩 넘겨 가며 세야 합니다.
-   화면을 막지 않도록 렌더가 끝난 다음 백그라운드로 돌리고, 숫자는 세는 대로 갱신합니다.
-   품목 목록 자체는 저장하지 않습니다(메모리·속도). */
-async function countItems(){
-  let cursor, total = 0, inStock = 0;
-  try {
-    for (let i = 0; i < 100; i++) {
-      const j = await api("/v1/items?limit=100" + (cursor ? "&cursor=" + cursor : ""));
-      const list = j.items || [];
-      total += list.length;
-      for (const it of list) if ((Number(it.quantity) || 0) > 0) inStock++;
-
-      $("#t-items").textContent = nf(inStock);
-      $("#t-items-k").textContent = "재고 있음 / " + nf(total) + "품목" + (j.has_more ? " 세는 중…" : "");
-
-      if (!j.has_more || j.cursor == null) break;
-      cursor = j.cursor;
-    }
-    $("#t-items-k").textContent = "재고 있음 / 전체 " + nf(total) + "품목";
-  } catch (e) {
-    $("#t-items").textContent = "—";
-    $("#t-items-k").textContent = "총 품목수 (실패)";
-  }
-}
-
-/* ---------------- CSV ---------------- */
-function csv(name, rows){
-  const body = rows.map(r => r.map(v => {
-    const s = v == null ? "" : String(v);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
-  }).join(",")).join("\r\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob(["﻿" + body], {type:"text/csv;charset=utf-8"}));
-  a.download = name; document.body.appendChild(a); a.click();
-  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 800);
-}
-const stamp = () => { const d=new Date(), p=n=>String(n).padStart(2,"0");
-  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; };
-
-/* ---------------- 이벤트 ---------------- */
-$("#btnSetup").addEventListener("click", ()=> $("#setup").classList.toggle("hidden"));
-$("#btnConnect").addEventListener("click", ()=>{
-  const v = $("#token").value.trim();
-  if (!v) return showErr("토큰을 입력하세요.");
-  try { localStorage.setItem(LS, v); } catch(e){}
-  S.token = v; load();
-});
-$("#btnForget").addEventListener("click", ()=>{
-  try { localStorage.removeItem(LS); } catch(e){}
-  S.token = ""; $("#token").value = "";
-  $("#teamBadge").textContent = "미연결";
-  setStatus("토큰을 지웠습니다.");
-});
-$("#token").addEventListener("keydown", e => { if (e.key === "Enter") $("#btnConnect").click(); });
-$("#btnReload").addEventListener("click", load);
-
-/* 탭 전환.
-   예전 코드는 ["tx","loc","item"] 을 그대로 돌렸는데 #tab-item 이 없어서
-   $("#tab-item") 가 null 이 되고, 탭을 누르면 거기서 예외가 나 전환이 멈췄습니다.
-   없는 칸은 건너뜁니다. */
-function showTab(name){
-  $$(".tab").forEach(x => x.classList.toggle("on", x.dataset.tab === name));
-  ["tx","loc","dup","item"].forEach(k => {
-    const el = $("#tab-" + k);
-    if (el) el.classList.toggle("hidden", k !== name);
-  });
-  if (location.hash.slice(1) !== name) {
-    try { history.replaceState(null, "", "#" + name); } catch(e){}
-  }
-}
-
-$$(".tab").forEach(t => t.addEventListener("click", () => showTab(t.dataset.tab)));
-
-/* 주소 끝에 #tx(입출고 내역) · #loc(창고별 집계) 을 붙이면 그 탭으로 바로 엽니다.
-   업무포털의 재고관리 카드 칩이 이 주소를 씁니다. */
-(function openTabFromHash(){
-  const h = (location.hash || "").slice(1);
-  if (h === "tx" || h === "loc" || h === "dup") showTab(h);
-})();
-window.addEventListener("hashchange", () => {
-  const h = (location.hash || "").slice(1);
-  if (h === "tx" || h === "loc" || h === "dup") showTab(h);
-});
-
-let deb;
-const reTx = ()=>{ clearTimeout(deb); deb = setTimeout(renderTx, 150); };
-$("#txQ").addEventListener("input", reTx);
-$("#txType").addEventListener("change", renderTx);
-$("#txDays").addEventListener("change", renderTx);
-
-
-$("#btnCsvTx").addEventListener("click", ()=>{
-  const rows = [["일시","유형","품목수","수량","창고","거래처","담당자","메모"]];
-  filteredTx().forEach(t => {
-    const w = kst(t.transaction_time);
-    rows.push([w.date + " " + w.time, TYPE_KO[t.type]||t.type, t.count_of_items,
-      Math.abs(Number(t.total_quantity)||0),
-      (t.type==="out" ? t.from_location?.name : t.to_location?.name) || "",
-      t.partner?.name || "", t.created_by?.name || "", t.memo || ""]);
-  });
-  csv("재고관리_입출고내역_" + stamp() + ".csv", rows);
-});
-
-/* ---------------- 시작 ---------------- */
-(async function init(){
-  setStatus("연결 확인 중…");
-
-  // 1순위 : 서버 프록시 (토큰이 서버에 있음 → 보는 사람은 아무것도 안 넣어도 됨)
-  if (await detectProxy()) {
-    S.proxy = true;
-    $("#btnSetup").classList.add("hidden");
-    $("#setup").classList.add("hidden");
-    load();
-    return;
-  }
-
-  // 2순위 : 이 브라우저에 넣어 둔 토큰
-  const t = token();
-  if (t) { S.token = t; $("#token").value = t; load(); }
-  else {
-    $("#setup").classList.remove("hidden");
-    setStatus("토큰을 넣으면 시작합니다.");
-  }
+render();
+(()=>{const KK="fiti_health_key";let subs=[],store={};
+  const getK=()=>{try{return localStorage.getItem(KK)||sessionStorage.getItem(KK);}catch(e){return null;}};
+  const emit=()=>{const docs=Object.keys(store).map(id=>({id,data:()=>store[id]}));subs.forEach(f=>f({docs}));};
+  async function api(method,key,data){
+    const r=await fetch("/api/health",{method,headers:{"x-key":key,"Content-Type":"application/json"},body:data?JSON.stringify({store:data}):undefined});
+    const j=await r.json().catch(()=>({}));
+    if(r.status===401)throw new Error("비밀번호가 맞지 않습니다.");
+    if(!r.ok)throw new Error(j.message||("서버 오류 "+r.status));return j;}
+  async function persist(){await api("POST",getK(),store);}
+  window.replaceAll=async o=>{const st=store._settings;store=o;if(st)store._settings=st;emit();await persist();};
+  col={doc:id=>({set:async o=>{store[id]=o;emit();await persist();},delete:async()=>{delete store[id];emit();await persist();}}),
+       onSnapshot:(f)=>{subs.push(f);}};
+  col.onSnapshot(s=>{const all=s.docs.map(d=>({id:d.id,...d.data()}));
+    const st=all.find(x=>x.id==="_settings");if(st)settings.next=st.next||"";
+    rows=all.filter(x=>x.dt);$("status").textContent=`로그인됨 · ${rows.length}회차 · `;
+    const a=document.createElement("a");a.href="#";a.textContent="로그아웃";a.style.color="inherit";
+    a.onclick=e=>{e.preventDefault();try{localStorage.removeItem(KK);sessionStorage.removeItem(KK);}catch(x){}location.reload();};
+    $("status").appendChild(a);render();});
+  const gate=$("login");
+  async function login(key,keep){
+    $("lgMsg").textContent="확인 중…";
+    try{const j=await api("GET",key);
+      try{(keep?localStorage:sessionStorage).setItem(KK,key);}catch(e){}
+      store=j.store||{};
+      gate.hidden=true;emit();}
+    catch(e){$("lgMsg").textContent=e.message==="Failed to fetch"?"서버에 연결할 수 없습니다.":e.message;gate.hidden=false;$("lgPw").focus();}}
+  $("lgForm").onsubmit=e=>{e.preventDefault();const k=$("lgPw").value.trim();if(k)login(k,$("lgKeep").checked);};
+  const k=getK();if(k)login(k,true);else{gate.hidden=false;$("lgPw").focus();}
 })();
 </script>
-
-<!-- ─────────────────────────────────────────────────────────────
-     업무포털 주소 — 포털 주소가 바뀌면 **아래 한 줄만** 고치세요.
-     이 스크립트가 페이지 안의 「← 업무포털」 링크를 전부 바꿔 줍니다.
-     ───────────────────────────────────────────────────────────── -->
-<script>
-  window.FITI_PORTAL = 'https://fiti-procurement-portal.vercel.app/';
-  (function () {
-    /* 수요부서 포털에서 넘어오면 주소에 ?from=dept&back=<돌아갈 주소> 가 붙습니다.
-       그때는 「← 업무포털」이 전략구매팀 포털이 아니라 수요부서 포털로 돌아갑니다.
-       한 번 들어오면 그 탭이 기억하므로(sessionStorage) 앱 안에서 옮겨 다녀도 유지됩니다.
-       back 은 주소로 들어오는 값이라 https 의 vercel.app 만 받습니다. */
-    var KEY = 'fiti.portalBack';
-    function clean(u) {
-      try { var x = new URL(u); return (x.protocol === 'https:' && /\.vercel\.app$/.test(x.hostname)) ? x.origin + x.pathname : ''; }
-      catch (e) { return ''; }
-    }
-    var back = '';
-    try {
-      var p = new URLSearchParams(location.search);
-      back = (p.get('from') === 'dept') ? clean(p.get('back') || '') : '';
-      if (back) sessionStorage.setItem(KEY, back);
-      else back = clean(sessionStorage.getItem(KEY) || '');
-    } catch (e) { back = ''; }
-
-    var target = back || window.FITI_PORTAL;
-    var sel = 'a[href*="procurement-portal"], a[data-portal]';
-    document.querySelectorAll(sel).forEach(function (a) {
-      a.href = target;
-      if (!back) return;
-      a.title = '수요부서 업무포털로 이동';
-      if (!a.children.length && /업무포털/.test(a.textContent)) {
-        a.textContent = a.textContent.replace('전략구매팀 업무포털', '수요부서 업무포털').replace(/^←\s*업무포털$/, '← 수요부서 포털');
-      }
-    });
-  })();
-</script>
-</body>
-</html>
+</body></html>
